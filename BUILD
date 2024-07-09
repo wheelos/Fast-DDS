@@ -43,10 +43,12 @@ cc_library(
         "include/**/*.hpp",
         "src/cpp/**/*.h",
         "src/cpp/**/*.hpp",
+        "thirdparty/boost/include/**/*.h",
+        "thirdparty/boost/include/**/*.hpp",
+        "thirdparty/boost/include/**/*.ipp",
     ]) + [
         "thirdparty/filewatch/FileWatch.hpp",
         "thirdparty/nlohmann-json/nlohmann/json.hpp",
-        "thirdparty/boost/include/boostconfig.hpp",
         "thirdparty/taocpp-pegtl/pegtl/contrib/parse_tree.hpp",
         "thirdparty/taocpp-pegtl/pegtl.hpp",
         ":configure_file",
@@ -258,6 +260,7 @@ cc_library(
         "thirdparty/nlohmann-json",
         "thirdparty/boost/include",
         "thirdparty/taocpp-pegtl",
+        "thirdparty/taocpp-pegtl/pegtl/contrib/",
     ],
     deps = [
         "@fastcdr//:fastcdr",
