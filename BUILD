@@ -49,6 +49,7 @@ cc_library(
         "include/**/*.ipp",
         "src/cpp/**/*.h",
         "src/cpp/**/*.hpp",
+        "src/cpp/**/*.ipp",
         "thirdparty/boost/include/**/*.h",
         "thirdparty/boost/include/**/*.hpp",
         "thirdparty/boost/include/**/*.ipp",

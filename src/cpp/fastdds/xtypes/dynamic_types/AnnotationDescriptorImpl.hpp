@@ -34,7 +34,7 @@ public:
     AnnotationDescriptorImpl() noexcept = default;
 
     AnnotationDescriptorImpl(
-            const AnnotationDescriptorImpl&) noexcept = default;
+            const AnnotationDescriptorImpl&)  = default;
 
     AnnotationDescriptorImpl(
             AnnotationDescriptorImpl&&) noexcept = default;
