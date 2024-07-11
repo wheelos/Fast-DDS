@@ -265,6 +265,7 @@ cc_library(
     includes = [
         "include",
         "src/cpp",
+        "src/cpp/utils",
         "thirdparty/filewatch",
         "thirdparty/nlohmann-json",
         "thirdparty/boost/include",
