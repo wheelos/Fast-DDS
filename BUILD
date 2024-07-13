@@ -27,10 +27,10 @@ cmake_configure_file(
         "HAVE_LOG_NO_INFO=1",
         "HAVE_LOG_NO_WARNING=1",
         "TLS_FOUND=0",
-        "PROJECT_VERSION_MAJOR=1",
-        "PROJECT_VERSION_MINOR=12",
-        "PROJECT_VERSION_PATCH=4",
-        "PROJECT_VERSION=1.12.4"
+        "PROJECT_VERSION_MAJOR=2",
+        "PROJECT_VERSION_MINOR=14",
+        "PROJECT_VERSION_PATCH=2",
+        "PROJECT_VERSION=2.14.2"
     ],
     undefines = [
         "HAVE_CXX20",
