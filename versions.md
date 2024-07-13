@@ -48,6 +48,7 @@ Forthcoming
 * Calling `DataReader::return_loan` returns `ReturnCode_t::RETCODE_OK` both for empty sequences and for sequences that were not loaned.
 * Refactor examples:
   * Hello world example with wait-sets and environment XML profiles.
+  * Security example with environment XML profiles.
   * Configuration example that condenses multiple QoS examples. Multiple configurations allowed through argument parsing.
   * Custom payload pool example that uses a user-defined payload pool instead of the default
   * X-Types example with dynamic type discovery and Hello world example compatibility.
@@ -83,6 +84,7 @@ Forthcoming
 * Refactor in XML Parser to return DynamicTypeBuilder instead of DynamicType
 * Setting vendor_id in the received CacheChange_t for Data and DataFrag.
 * Added new DynamicData to JSON serializer (`json_serialize`).
+* Added new DynamicType to IDL serializer (`idl_serialize`).
 
 Version 2.14.0
 --------------
