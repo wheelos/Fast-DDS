@@ -337,8 +337,8 @@ ReturnCode_t DomainParticipantImpl::fill_discovery_data_from_cdr_message(
 }
 
 ReturnCode_t DomainParticipantImpl::fill_discovery_data_from_cdr_message(
-        fastdds::rtps::WriterProxyData& data,
-        fastdds::statistics::MonitorServiceStatusData& msg)
+        fastdds::dds::PublicationBuiltinTopicData& data,
+        const fastdds::statistics::MonitorServiceStatusData& msg)
 {
     ReturnCode_t ret{efd::RETCODE_OK};
 
@@ -351,8 +351,8 @@ ReturnCode_t DomainParticipantImpl::fill_discovery_data_from_cdr_message(
 }
 
 ReturnCode_t DomainParticipantImpl::fill_discovery_data_from_cdr_message(
-        fastdds::rtps::ReaderProxyData& data,
-        fastdds::statistics::MonitorServiceStatusData& msg)
+        fastdds::dds::SubscriptionBuiltinTopicData& data,
+        const fastdds::statistics::MonitorServiceStatusData& msg)
 {
     ReturnCode_t ret{efd::RETCODE_OK};
 
@@ -575,10 +575,10 @@ bool DomainParticipantImpl::find_or_create_topic_and_type(
     efd::TopicDescription* topic_desc = lookup_topicdescription(topic_name);
     if (nullptr != topic_desc)
     {
-        if (topic_desc->get_type_name() != type->getName())
+        if (topic_desc->get_type_name() != type->get_name())
         {
             EPROSIMA_LOG_ERROR(STATISTICS_DOMAIN_PARTICIPANT,
-                    topic_name << " is not using expected type " << type->getName() <<
+                    topic_name << " is not using expected type " << type->get_name() <<
                     " and is using instead type " << topic_desc->get_type_name());
             return false;
         }
@@ -591,14 +591,14 @@ bool DomainParticipantImpl::find_or_create_topic_and_type(
     }
     else
     {
-        if (efd::RETCODE_PRECONDITION_NOT_MET == register_type(type, type->getName()))
+        if (efd::RETCODE_PRECONDITION_NOT_MET == register_type(type, type->get_name()))
         {
             // No log because it is already logged within register_type
             return false;
         }
         // Create topic. No need to check return pointer. It fails if the topic already exists, if the QoS is
         // inconsistent or if the type is not registered.
-        *topic = create_topic(topic_name, type->getName(), efd::TOPIC_QOS_DEFAULT);
+        *topic = create_topic(topic_name, type->get_name(), efd::TOPIC_QOS_DEFAULT);
     }
     assert(nullptr != *topic);
     return true;

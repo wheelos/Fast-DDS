@@ -440,9 +440,9 @@ protected:
 
         void on_reader_discovery(
                 fastdds::rtps::RTPSWriter* writer,
-                fastdds::rtps::ReaderDiscoveryInfo::DISCOVERY_STATUS reason,
+                fastdds::rtps::ReaderDiscoveryStatus reason,
                 const fastdds::rtps::GUID_t& reader_guid,
-                const fastdds::rtps::ReaderProxyData* reader_info) override;
+                const fastdds::rtps::SubscriptionBuiltinTopicData* reader_info) override;
 
 #ifdef FASTDDS_STATISTICS
         void notify_status_observer(
@@ -662,24 +662,9 @@ protected:
             const fastdds::rtps::WriterAttributes& writer_attributes,
             bool& is_datasharing_compatible) const;
 
-    template<typename SizeFunctor>
     bool get_free_payload_from_pool(
-            const SizeFunctor& size_getter,
-            SerializedPayload_t& payload)
-    {
-        if (!payload_pool_)
-        {
-            return false;
-        }
-
-        uint32_t size = fixed_payload_size_ ? fixed_payload_size_ : size_getter();
-        if (!payload_pool_->get_payload(size, payload))
-        {
-            return false;
-        }
-
-        return true;
-    }
+            uint32_t size,
+            SerializedPayload_t& payload);
 
     bool add_loan(
             const void* const data,
@@ -707,7 +692,7 @@ protected:
      */
     void process_reader_filter_info(
             const fastdds::rtps::GUID_t& reader_guid,
-            const fastdds::rtps::ReaderProxyData& reader_info);
+            const fastdds::rtps::SubscriptionBuiltinTopicData& reader_info);
 
     bool is_relevant(
             const fastdds::rtps::CacheChange_t& change,

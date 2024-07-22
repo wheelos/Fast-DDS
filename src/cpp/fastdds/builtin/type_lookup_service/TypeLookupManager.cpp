@@ -28,8 +28,6 @@
 #include <fastdds/rtps/attributes/WriterAttributes.hpp>
 #include <fastdds/rtps/builtin/data/BuiltinEndpoints.hpp>
 #include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
-#include <fastdds/rtps/builtin/data/ReaderProxyData.hpp>
-#include <fastdds/rtps/builtin/data/WriterProxyData.hpp>
 #include <fastdds/rtps/common/CdrSerialization.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
@@ -37,6 +35,8 @@
 #include <fastdds/rtps/writer/RTPSWriter.hpp>
 
 #include <rtps/builtin/BuiltinProtocols.h>
+#include <rtps/builtin/data/ReaderProxyData.hpp>
+#include <rtps/builtin/data/WriterProxyData.hpp>
 #include <rtps/participant/RTPSParticipantImpl.h>
 #include <rtps/reader/StatefulReader.hpp>
 #include <rtps/RTPSDomainImpl.hpp>
@@ -166,7 +166,7 @@ bool TypeLookupManager::assign_remote_endpoints(
         EPROSIMA_LOG_INFO(TYPELOOKUP_SERVICE, "Adding remote writer to the local Builtin Request Reader");
         temp_writer_proxy_data_->guid().entityId = fastdds::rtps::c_EntityId_TypeLookup_request_writer;
         temp_writer_proxy_data_->persistence_guid().entityId = fastdds::rtps::c_EntityId_TypeLookup_request_writer;
-        builtin_request_reader_->matched_writer_add(*temp_writer_proxy_data_);
+        builtin_request_reader_->matched_writer_add_edp(*temp_writer_proxy_data_);
     }
 
     auxendp = endp;
@@ -177,7 +177,7 @@ bool TypeLookupManager::assign_remote_endpoints(
         EPROSIMA_LOG_INFO(TYPELOOKUP_SERVICE, "Adding remote writer to the local Builtin Reply Reader");
         temp_writer_proxy_data_->guid().entityId = fastdds::rtps::c_EntityId_TypeLookup_reply_writer;
         temp_writer_proxy_data_->persistence_guid().entityId = fastdds::rtps::c_EntityId_TypeLookup_reply_writer;
-        builtin_reply_reader_->matched_writer_add(*temp_writer_proxy_data_);
+        builtin_reply_reader_->matched_writer_add_edp(*temp_writer_proxy_data_);
     }
 
     auxendp = endp;
@@ -187,7 +187,7 @@ bool TypeLookupManager::assign_remote_endpoints(
     {
         EPROSIMA_LOG_INFO(TYPELOOKUP_SERVICE, "Adding remote reader to the local Builtin Request Writer");
         temp_reader_proxy_data_->guid().entityId = fastdds::rtps::c_EntityId_TypeLookup_request_reader;
-        builtin_request_writer_->matched_reader_add(*temp_reader_proxy_data_);
+        builtin_request_writer_->matched_reader_add_edp(*temp_reader_proxy_data_);
     }
 
     auxendp = endp;
@@ -197,7 +197,7 @@ bool TypeLookupManager::assign_remote_endpoints(
     {
         EPROSIMA_LOG_INFO(TYPELOOKUP_SERVICE, "Adding remote reader to the local Builtin Reply Writer");
         temp_reader_proxy_data_->guid().entityId = fastdds::rtps::c_EntityId_TypeLookup_reply_reader;
-        builtin_reply_writer_->matched_reader_add(*temp_reader_proxy_data_);
+        builtin_reply_writer_->matched_reader_add_edp(*temp_reader_proxy_data_);
     }
 
     return true;
@@ -279,7 +279,7 @@ SampleIdentity TypeLookupManager::get_type_dependencies(
         id = request->header().requestId();
     }
     // Delete request data after sending
-    type.deleteData(request);
+    type.delete_data(request);
     return id;
 }
 
@@ -303,7 +303,7 @@ SampleIdentity TypeLookupManager::get_types(
         id = request->header().requestId();
     }
     // Delete request data after sending
-    type.deleteData(request);
+    type.delete_data(request);
     return id;
 }
 
@@ -669,7 +669,7 @@ TypeLookup_Request* TypeLookupManager::create_request(
         const fastdds::rtps::GUID_t& type_server,
         TypeLookup_RequestPubSubType& pupsubtype) const
 {
-    TypeLookup_Request* request = static_cast<TypeLookup_Request*>(pupsubtype.createData());
+    TypeLookup_Request* request = static_cast<TypeLookup_Request*>(pupsubtype.create_data());
     request->header().instanceName() = get_instance_name(type_server);
     request->header().requestId().writer_guid(guid_rtps_2_dds(builtin_request_writer_->getGuid()));
     request->header().requestId().sequence_number(sequence_number_rtps_2_dds(request_seq_number_));
@@ -720,7 +720,7 @@ bool TypeLookupManager::send_impl(
     }
 
     // Serialize the message using the provided PubSubType
-    bool result = pubsubtype->serialize(&msg, &change->serializedPayload,
+    bool result = pubsubtype->serialize(&msg, change->serializedPayload,
                     DataRepresentationId_t::XCDR2_DATA_REPRESENTATION);
     // If serialization was successful, update the change and add it to the WriterHistory
     if (result)
@@ -798,7 +798,7 @@ bool TypeLookupManager::receive_impl(
         return false;
     }
 
-    bool result = pubsubtype->deserialize(&payload, &msg);
+    bool result = pubsubtype->deserialize(payload, &msg);
     payload.data = nullptr;
 
     return result;

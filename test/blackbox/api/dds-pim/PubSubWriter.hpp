@@ -119,48 +119,50 @@ class PubSubWriter
 
         void on_data_reader_discovery(
                 eprosima::fastdds::dds::DomainParticipant*,
-                eprosima::fastdds::rtps::ReaderDiscoveryInfo&& info,
+                eprosima::fastdds::rtps::ReaderDiscoveryStatus reason,
+                const eprosima::fastdds::dds::SubscriptionBuiltinTopicData& info,
                 bool& /*should_be_ignored*/) override
         {
-            if (info.status == eprosima::fastdds::rtps::ReaderDiscoveryInfo::DISCOVERED_READER)
+            if (reason == eprosima::fastdds::rtps::ReaderDiscoveryStatus::DISCOVERED_READER)
             {
-                writer_.add_reader_info(info.info);
+                writer_.add_reader_info(info);
 
             }
-            else if (info.status == eprosima::fastdds::rtps::ReaderDiscoveryInfo::CHANGED_QOS_READER)
+            else if (reason == eprosima::fastdds::rtps::ReaderDiscoveryStatus::CHANGED_QOS_READER)
             {
-                writer_.change_reader_info(info.info);
+                writer_.change_reader_info(info);
             }
-            else if (info.status == eprosima::fastdds::rtps::ReaderDiscoveryInfo::REMOVED_READER)
+            else if (reason == eprosima::fastdds::rtps::ReaderDiscoveryStatus::REMOVED_READER)
             {
-                writer_.remove_reader_info(info.info);
+                writer_.remove_reader_info(info);
             }
         }
 
         void on_data_writer_discovery(
                 eprosima::fastdds::dds::DomainParticipant*,
-                eprosima::fastdds::rtps::WriterDiscoveryInfo&& info,
+                eprosima::fastdds::rtps::WriterDiscoveryStatus reason,
+                const eprosima::fastdds::dds::PublicationBuiltinTopicData& info,
                 bool& /*should_be_ignored*/) override
         {
-            if (info.status == eprosima::fastdds::rtps::WriterDiscoveryInfo::DISCOVERED_WRITER)
+            using eprosima::fastdds::rtps::WriterDiscoveryStatus;
+
+            if (reason == WriterDiscoveryStatus::DISCOVERED_WRITER)
             {
-                writer_.add_writer_info(info.info);
+                writer_.add_writer_info(info);
             }
-            else if (info.status == eprosima::fastdds::rtps::WriterDiscoveryInfo::CHANGED_QOS_WRITER)
+            else if (reason == WriterDiscoveryStatus::CHANGED_QOS_WRITER)
             {
-                writer_.change_writer_info(info.info);
+                writer_.change_writer_info(info);
             }
-            else if (info.status == eprosima::fastdds::rtps::WriterDiscoveryInfo::REMOVED_WRITER)
+            else if (reason == WriterDiscoveryStatus::REMOVED_WRITER)
             {
-                writer_.remove_writer_info(info.info);
+                writer_.remove_writer_info(info);
             }
         }
 
     private:
 
         using eprosima::fastdds::dds::DomainParticipantListener::on_participant_discovery;
-        using eprosima::fastdds::dds::DomainParticipantListener::on_data_writer_discovery;
-        using eprosima::fastdds::dds::DomainParticipantListener::on_data_reader_discovery;
 
         ParticipantListener& operator =(
                 const ParticipantListener&) = delete;
@@ -404,7 +406,7 @@ public:
             ASSERT_EQ(participant_->register_type(type_), eprosima::fastdds::dds::RETCODE_OK);
 
             // Create topic
-            topic_ = participant_->create_topic(topic_name_, type_->getName(),
+            topic_ = participant_->create_topic(topic_name_, type_->get_name(),
                             eprosima::fastdds::dds::TOPIC_QOS_DEFAULT);
             ASSERT_NE(topic_, nullptr);
             ASSERT_TRUE(topic_->is_enabled());
@@ -1787,24 +1789,24 @@ protected:
 #endif // if HAVE_SECURITY
 
     void add_writer_info(
-            const eprosima::fastdds::rtps::WriterProxyData& writer_data)
+            const eprosima::fastdds::dds::PublicationBuiltinTopicData& writer_data)
     {
         mutexEntitiesInfoList_.lock();
-        auto ret = mapWriterInfoList_.insert(std::make_pair(writer_data.guid(), writer_data));
+        auto ret = mapWriterInfoList_.insert(std::make_pair(writer_data.guid, writer_data));
 
         if (!ret.second)
         {
             ret.first->second = writer_data;
         }
 
-        auto ret_topic = mapTopicCountList_.insert(std::make_pair(writer_data.topicName().to_string(), 1));
+        auto ret_topic = mapTopicCountList_.insert(std::make_pair(writer_data.topic_name, 1));
 
         if (!ret_topic.second)
         {
             ++ret_topic.first->second;
         }
 
-        for (auto partition : writer_data.m_qos.m_partition.names())
+        for (auto partition : writer_data.partition.names())
         {
             auto ret_partition = mapPartitionCountList_.insert(std::make_pair(partition, 1));
 
@@ -1819,19 +1821,19 @@ protected:
     }
 
     void change_writer_info(
-            const eprosima::fastdds::rtps::WriterProxyData& writer_data)
+            const eprosima::fastdds::dds::PublicationBuiltinTopicData& writer_data)
     {
         mutexEntitiesInfoList_.lock();
-        auto ret = mapWriterInfoList_.insert(std::make_pair(writer_data.guid(), writer_data));
+        auto ret = mapWriterInfoList_.insert(std::make_pair(writer_data.guid, writer_data));
 
         ASSERT_FALSE(ret.second);
-        eprosima::fastdds::rtps::WriterProxyData old_writer_data = ret.first->second;
+        eprosima::fastdds::dds::PublicationBuiltinTopicData old_writer_data = ret.first->second;
         ret.first->second = writer_data;
 
-        ASSERT_GT(mapTopicCountList_.count(writer_data.topicName().to_string()), 0ul);
+        ASSERT_GT(mapTopicCountList_.count(writer_data.topic_name.to_string()), 0ul);
 
         // Remove previous partitions
-        for (auto partition : old_writer_data.m_qos.m_partition.names())
+        for (auto partition : old_writer_data.partition.names())
         {
             auto partition_it = mapPartitionCountList_.find(partition);
             ASSERT_TRUE(partition_it != mapPartitionCountList_.end());
@@ -1843,7 +1845,7 @@ protected:
         }
 
         // Add new partitions
-        for (auto partition : writer_data.m_qos.m_partition.names())
+        for (auto partition : writer_data.partition.names())
         {
             auto ret_partition = mapPartitionCountList_.insert(std::make_pair(partition, 1));
 
@@ -1858,24 +1860,24 @@ protected:
     }
 
     void add_reader_info(
-            const eprosima::fastdds::rtps::ReaderProxyData& reader_data)
+            const eprosima::fastdds::dds::SubscriptionBuiltinTopicData& reader_data)
     {
         mutexEntitiesInfoList_.lock();
-        auto ret = mapReaderInfoList_.insert(std::make_pair(reader_data.guid(), reader_data));
+        auto ret = mapReaderInfoList_.insert(std::make_pair(reader_data.guid, reader_data));
 
         if (!ret.second)
         {
             ret.first->second = reader_data;
         }
 
-        auto ret_topic = mapTopicCountList_.insert(std::make_pair(reader_data.topicName().to_string(), 1));
+        auto ret_topic = mapTopicCountList_.insert(std::make_pair(reader_data.topic_name.to_string(), 1));
 
         if (!ret_topic.second)
         {
             ++ret_topic.first->second;
         }
 
-        for (auto partition : reader_data.m_qos.m_partition.names())
+        for (auto partition : reader_data.partition.names())
         {
             auto ret_partition = mapPartitionCountList_.insert(std::make_pair(partition, 1));
 
@@ -1890,19 +1892,19 @@ protected:
     }
 
     void change_reader_info(
-            const eprosima::fastdds::rtps::ReaderProxyData& reader_data)
+            const eprosima::fastdds::dds::SubscriptionBuiltinTopicData& reader_data)
     {
         mutexEntitiesInfoList_.lock();
-        auto ret = mapReaderInfoList_.insert(std::make_pair(reader_data.guid(), reader_data));
+        auto ret = mapReaderInfoList_.insert(std::make_pair(reader_data.guid, reader_data));
 
         ASSERT_FALSE(ret.second);
-        eprosima::fastdds::rtps::ReaderProxyData old_reader_data = ret.first->second;
+        eprosima::fastdds::dds::SubscriptionBuiltinTopicData old_reader_data = ret.first->second;
         ret.first->second = reader_data;
 
-        ASSERT_GT(mapTopicCountList_.count(reader_data.topicName().to_string()), 0ul);
+        ASSERT_GT(mapTopicCountList_.count(reader_data.topic_name.to_string()), 0ul);
 
         // Remove previous partitions
-        for (auto partition : old_reader_data.m_qos.m_partition.names())
+        for (auto partition : old_reader_data.partition.names())
         {
             auto partition_it = mapPartitionCountList_.find(partition);
             ASSERT_TRUE(partition_it != mapPartitionCountList_.end());
@@ -1913,7 +1915,7 @@ protected:
             }
         }
 
-        for (auto partition : reader_data.m_qos.m_partition.names())
+        for (auto partition : reader_data.partition.names())
         {
             auto ret_partition = mapPartitionCountList_.insert(std::make_pair(partition, 1));
 
@@ -1928,19 +1930,19 @@ protected:
     }
 
     void remove_writer_info(
-            const eprosima::fastdds::rtps::WriterProxyData& writer_data)
+            const eprosima::fastdds::dds::PublicationBuiltinTopicData& writer_data)
     {
         std::unique_lock<std::mutex> lock(mutexEntitiesInfoList_);
 
-        ASSERT_GT(mapWriterInfoList_.count(writer_data.guid()), 0ul);
+        ASSERT_GT(mapWriterInfoList_.count(writer_data.guid), 0ul);
 
-        mapWriterInfoList_.erase(writer_data.guid());
+        mapWriterInfoList_.erase(writer_data.guid);
 
-        ASSERT_GT(mapTopicCountList_.count(writer_data.topicName().to_string()), 0ul);
+        ASSERT_GT(mapTopicCountList_.count(writer_data.topic_name.to_string()), 0ul);
 
-        --mapTopicCountList_[writer_data.topicName().to_string()];
+        --mapTopicCountList_[writer_data.topic_name.to_string()];
 
-        for (auto partition : writer_data.m_qos.m_partition.names())
+        for (auto partition : writer_data.partition.names())
         {
             auto partition_it = mapPartitionCountList_.find(partition);
             ASSERT_TRUE(partition_it != mapPartitionCountList_.end());
@@ -1956,19 +1958,19 @@ protected:
     }
 
     void remove_reader_info(
-            const eprosima::fastdds::rtps::ReaderProxyData& reader_data)
+            const eprosima::fastdds::dds::SubscriptionBuiltinTopicData& reader_data)
     {
         std::unique_lock<std::mutex> lock(mutexEntitiesInfoList_);
 
-        ASSERT_GT(mapReaderInfoList_.count(reader_data.guid()), 0ul);
+        ASSERT_GT(mapReaderInfoList_.count(reader_data.guid), 0ul);
 
-        mapReaderInfoList_.erase(reader_data.guid());
+        mapReaderInfoList_.erase(reader_data.guid);
 
-        ASSERT_GT(mapTopicCountList_.count(reader_data.topicName().to_string()), 0ul);
+        ASSERT_GT(mapTopicCountList_.count(reader_data.topic_name.to_string()), 0ul);
 
-        --mapTopicCountList_[reader_data.topicName().to_string()];
+        --mapTopicCountList_[reader_data.topic_name.to_string()];
 
-        for (auto partition : reader_data.m_qos.m_partition.names())
+        for (auto partition : reader_data.partition.names())
         {
             auto partition_it = mapPartitionCountList_.find(partition);
             ASSERT_TRUE(partition_it != mapPartitionCountList_.end());
@@ -2006,8 +2008,8 @@ protected:
     eprosima::fastdds::dds::TypeSupport type_;
     std::mutex mutexEntitiesInfoList_;
     std::condition_variable cvEntitiesInfoList_;
-    std::map<eprosima::fastdds::rtps::GUID_t, eprosima::fastdds::rtps::WriterProxyData> mapWriterInfoList_;
-    std::map<eprosima::fastdds::rtps::GUID_t, eprosima::fastdds::rtps::ReaderProxyData> mapReaderInfoList_;
+    std::map<eprosima::fastdds::rtps::GUID_t, eprosima::fastdds::dds::PublicationBuiltinTopicData> mapWriterInfoList_;
+    std::map<eprosima::fastdds::rtps::GUID_t, eprosima::fastdds::dds::SubscriptionBuiltinTopicData> mapReaderInfoList_;
     std::map<std::string,  int> mapTopicCountList_;
     std::map<std::string,  int> mapPartitionCountList_;
     bool discovery_result_;

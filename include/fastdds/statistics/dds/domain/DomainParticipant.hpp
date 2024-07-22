@@ -22,6 +22,8 @@
 
 #include <string>
 
+#include <fastdds/dds/builtin/topic/PublicationBuiltinTopicData.hpp>
+#include <fastdds/dds/builtin/topic/SubscriptionBuiltinTopicData.hpp>
 #include <fastdds/dds/core/ReturnCode.hpp>
 #include <fastdds/dds/domain/DomainParticipant.hpp>
 #include <fastdds/dds/publisher/qos/DataWriterQos.hpp>
@@ -30,12 +32,6 @@
 
 namespace eprosima {
 namespace fastdds {
-namespace rtps {
-
-class ReaderProxyData;
-class WriterProxyData;
-} // namespace rtps
-
 namespace statistics {
 
 class MonitorServiceStatusData;
@@ -149,32 +145,6 @@ public:
             statistics::MonitorServiceStatusData& msg);
 
     /**
-     * fills in the WriterProxyData from a MonitorService Message
-     *
-     * @param [out] data Proxy to fill.
-     * @param [in] msg MonitorService Message to get the proxy information from.
-     *
-     * @return RETCODE_OK if the operation succeeds.
-     * @return RETCODE_ERROR if the  operation fails.
-     */
-    FASTDDS_EXPORTED_API eprosima::fastdds::dds::ReturnCode_t fill_discovery_data_from_cdr_message(
-            fastdds::rtps::WriterProxyData& data,
-            statistics::MonitorServiceStatusData& msg);
-
-    /**
-     * fills in the ReaderProxyData from a MonitorService Message
-     *
-     * @param [out] data Proxy to fill.
-     * @param [in] msg MonitorService Message to get the proxy information from.
-     *
-     * @return RETCODE_OK if the operation succeeds.
-     * @return RETCODE_ERROR if the  operation fails.
-     */
-    FASTDDS_EXPORTED_API eprosima::fastdds::dds::ReturnCode_t fill_discovery_data_from_cdr_message(
-            fastdds::rtps::ReaderProxyData& data,
-            statistics::MonitorServiceStatusData& msg);
-
-    /**
      * fills in the ParticipantProxyData from a MonitorService Message
      *
      * @param [out] data Proxy to fill
@@ -188,7 +158,7 @@ public:
             const statistics::MonitorServiceStatusData& msg);
 
     /**
-     * fills in the WriterProxyData from a MonitorService Message
+     * fills in the PublicationBuiltinTopicData from a MonitorService Message
      *
      * @param [out] data Proxy to fill.
      * @param [in] msg MonitorService Message to get the proxy information from.
@@ -197,11 +167,11 @@ public:
      * @return RETCODE_ERROR if the  operation fails.
      */
     FASTDDS_EXPORTED_API eprosima::fastdds::dds::ReturnCode_t fill_discovery_data_from_cdr_message(
-            fastdds::rtps::WriterProxyData& data,
+            fastdds::dds::PublicationBuiltinTopicData& data,
             const statistics::MonitorServiceStatusData& msg);
 
     /**
-     * fills in the ReaderProxyData from a MonitorService Message
+     * fills in the SubscriptionBuiltinTopicData from a MonitorService Message
      *
      * @param [out] data Proxy to fill.
      * @param [in] msg MonitorService Message to get the proxy information from.
@@ -210,7 +180,7 @@ public:
      * @return RETCODE_ERROR if the  operation fails.
      */
     FASTDDS_EXPORTED_API eprosima::fastdds::dds::ReturnCode_t fill_discovery_data_from_cdr_message(
-            fastdds::rtps::ReaderProxyData& data,
+            fastdds::dds::SubscriptionBuiltinTopicData& data,
             const statistics::MonitorServiceStatusData& msg);
 
 };

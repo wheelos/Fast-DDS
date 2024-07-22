@@ -13,12 +13,9 @@
 # limitations under the License.
 
 add_subdirectory(DynamicHelloWorldExample)
-add_subdirectory(FlowControlExample)
 add_subdirectory(HelloWorldExampleDataSharing)
 add_subdirectory(HelloWorldExampleSharedMem)
 add_subdirectory(HelloWorldExampleTCP)
 add_subdirectory(Keys)
-add_subdirectory(RequestReplyExample)
-add_subdirectory(StaticHelloWorldExample)
 add_subdirectory(WriterLoansExample)
 add_subdirectory(ZeroCopyExample)

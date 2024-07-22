@@ -14,15 +14,16 @@
 
 /**
  * @file RTPSParticipantListener.hpp
- *
  */
 
 #ifndef FASTDDS_RTPS_PARTICIPANT__RTPSPARTICIPANTLISTENER_HPP
 #define FASTDDS_RTPS_PARTICIPANT__RTPSPARTICIPANTLISTENER_HPP
 
+#include <fastdds/rtps/builtin/data/PublicationBuiltinTopicData.hpp>
+#include <fastdds/rtps/builtin/data/SubscriptionBuiltinTopicData.hpp>
 #include <fastdds/rtps/participant/ParticipantDiscoveryInfo.hpp>
-#include <fastdds/rtps/reader/ReaderDiscoveryInfo.hpp>
-#include <fastdds/rtps/writer/WriterDiscoveryInfo.hpp>
+#include <fastdds/rtps/reader/ReaderDiscoveryStatus.hpp>
+#include <fastdds/rtps/writer/WriterDiscoveryStatus.hpp>
 
 namespace eprosima {
 namespace fastdds {
@@ -80,16 +81,19 @@ public:
      * This method is called when a new Reader is discovered, or a previously discovered reader changes
      * its QOS or is removed.
      *
-     * @param [out] participant Pointer to the Participant which discovered the remote reader.
-     * @param [out] info Remote reader information. User can take ownership of the object.
-     * @param [out] should_be_ignored Flag to indicate the library to automatically ignore the discovered Reader.
+     * @param [in]  participant        Pointer to the Participant which discovered the remote reader.
+     * @param [in]  reason             The reason motivating this method to be called.
+     * @param [in]  info               Remote reader information.
+     * @param [out] should_be_ignored  Flag to indicate the library to automatically ignore the discovered reader.
      */
-    virtual void onReaderDiscovery(
+    virtual void on_reader_discovery(
             RTPSParticipant* participant,
-            ReaderDiscoveryInfo&& info,
+            ReaderDiscoveryStatus reason,
+            const SubscriptionBuiltinTopicData& info,
             bool& should_be_ignored)
     {
         static_cast<void>(participant);
+        static_cast<void>(reason);
         static_cast<void>(info);
         should_be_ignored = false;
     }
@@ -98,16 +102,19 @@ public:
      * This method is called when a new Writer is discovered, or a previously discovered writer changes
      * its QOS or is removed.
      *
-     * @param [out] participant Pointer to the Participant which discovered the remote writer.
-     * @param [out] info Remote writer information. User can take ownership of the object.
-     * @param [out] should_be_ignored Flag to indicate the library to automatically ignore the discovered Writer.
+     * @param [in]  participant        Pointer to the Participant which discovered the remote writer.
+     * @param [in]  reason             The reason motivating this method to be called.
+     * @param [in]  info               Remote writer information.
+     * @param [out] should_be_ignored  Flag to indicate the library to automatically ignore the discovered writer.
      */
-    virtual void onWriterDiscovery(
+    virtual void on_writer_discovery(
             RTPSParticipant* participant,
-            WriterDiscoveryInfo&& info,
+            WriterDiscoveryStatus reason,
+            const PublicationBuiltinTopicData& info,
             bool& should_be_ignored)
     {
         static_cast<void>(participant);
+        static_cast<void>(reason);
         static_cast<void>(info);
         should_be_ignored = false;
     }

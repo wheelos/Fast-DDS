@@ -29,8 +29,6 @@
 #include <fastdds/dds/log/Log.hpp>
 #include <fastdds/rtps/attributes/TopicAttributes.hpp>
 #include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
-#include <fastdds/rtps/builtin/data/ReaderProxyData.hpp>
-#include <fastdds/rtps/builtin/data/WriterProxyData.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
 #include <fastdds/rtps/reader/ReaderListener.hpp>
 #include <fastdds/rtps/reader/RTPSReader.hpp>
@@ -38,6 +36,8 @@
 #include <fastdds/rtps/writer/WriterListener.hpp>
 
 #include <rtps/builtin/data/ProxyHashTables.hpp>
+#include <rtps/builtin/data/ReaderProxyData.hpp>
+#include <rtps/builtin/data/WriterProxyData.hpp>
 #include <rtps/builtin/discovery/participant/PDP.h>
 #include <rtps/network/utils/external_locators.hpp>
 #include <rtps/participant/RTPSParticipantImpl.h>
@@ -765,7 +765,9 @@ bool EDP::pairingReader(
         const GUID_t& participant_guid,
         const ReaderProxyData& rdata)
 {
-    (void)participant_guid;
+    static_cast<void>(participant_guid);
+
+    BaseReader* reader = BaseReader::downcast(R);
 
     EPROSIMA_LOG_INFO(RTPS_EDP, rdata.guid() << " in topic: \"" << rdata.topicName() << "\"");
     std::lock_guard<std::recursive_mutex> pguard(*mp_PDP->getMutex());
@@ -784,45 +786,45 @@ bool EDP::pairingReader(
             MatchingFailureMask no_match_reason;
             fastdds::dds::PolicyMask incompatible_qos;
             bool valid = valid_matching(&rdata, wdatait, no_match_reason, incompatible_qos);
-            const GUID_t& reader_guid = R->getGuid();
+            const GUID_t& reader_guid = reader->getGuid();
             const GUID_t& writer_guid = wdatait->guid();
 
             if (valid)
             {
 #if HAVE_SECURITY
                 if (!mp_RTPSParticipant->security_manager().discovered_writer(reader_guid, (*pit)->m_guid,
-                        *wdatait, R->getAttributes().security_attributes()))
+                        *wdatait, reader->getAttributes().security_attributes()))
                 {
                     EPROSIMA_LOG_ERROR(RTPS_EDP, "Security manager returns an error for reader " << reader_guid);
                 }
 #else
-                if (R->matched_writer_add(*wdatait))
+                if (reader->matched_writer_add_edp(*wdatait))
                 {
                     static_cast<void>(reader_guid);  // Void cast to force usage if we don't have LOG_INFOs
                     EPROSIMA_LOG_INFO(RTPS_EDP_MATCH,
                             "WP:" << wdatait->guid() << " match R:" << reader_guid << ". RLoc:" <<
                             wdatait->remote_locators());
                     //MATCHED AND ADDED CORRECTLY:
-                    if (R->get_listener() != nullptr)
+                    if (reader->get_listener() != nullptr)
                     {
                         MatchingInfo info;
                         info.status = MATCHED_MATCHING;
                         info.remoteEndpointGuid = writer_guid;
-                        R->get_listener()->on_reader_matched(R, info);
+                        reader->get_listener()->on_reader_matched(reader, info);
                     }
                 }
 #endif // if HAVE_SECURITY
             }
             else
             {
-                if (no_match_reason.test(MatchingFailureMask::incompatible_qos) && R->get_listener() != nullptr)
+                if (no_match_reason.test(MatchingFailureMask::incompatible_qos) && reader->get_listener() != nullptr)
                 {
-                    R->get_listener()->on_requested_incompatible_qos(R, incompatible_qos);
+                    reader->get_listener()->on_requested_incompatible_qos(reader, incompatible_qos);
                 }
 
                 //EPROSIMA_LOG_INFO(RTPS_EDP,RTPS_CYAN<<"Valid Matching to writerProxy: "<<wdatait->m_guid<<RTPS_DEF<<endl);
-                if (R->matched_writer_is_matched(wdatait->guid())
-                        && R->matched_writer_remove(wdatait->guid()))
+                if (reader->matched_writer_is_matched(wdatait->guid())
+                        && reader->matched_writer_remove(wdatait->guid()))
                 {
 #if HAVE_SECURITY
                     mp_RTPSParticipant->security_manager().remove_writer(reader_guid, participant_guid,
@@ -830,12 +832,12 @@ bool EDP::pairingReader(
 #endif // if HAVE_SECURITY
 
                     //MATCHED AND ADDED CORRECTLY:
-                    if (R->get_listener() != nullptr)
+                    if (reader->get_listener() != nullptr)
                     {
                         MatchingInfo info;
                         info.status = REMOVED_MATCHING;
                         info.remoteEndpointGuid = writer_guid;
-                        R->get_listener()->on_reader_matched(R, info);
+                        reader->get_listener()->on_reader_matched(reader, info);
                     }
                 }
             }
@@ -850,9 +852,12 @@ bool EDP::pairingWriter(
         const GUID_t& participant_guid,
         const WriterProxyData& wdata)
 {
-    (void)participant_guid;
+    static_cast<void>(participant_guid);
 
-    EPROSIMA_LOG_INFO(RTPS_EDP, W->getGuid() << " in topic: \"" << wdata.topicName() << "\"");
+    BaseWriter* writer = BaseWriter::downcast(W);
+    const GUID_t& writer_guid = writer->getGuid();
+
+    EPROSIMA_LOG_INFO(RTPS_EDP, writer_guid << " in topic: \"" << wdata.topicName() << "\"");
     std::lock_guard<std::recursive_mutex> pguard(*mp_PDP->getMutex());
 
     ResourceLimitedVector<ParticipantProxyData*>::const_iterator pit = mp_PDP->ParticipantProxiesBegin();
@@ -879,48 +884,48 @@ bool EDP::pairingWriter(
             if (valid)
             {
 #if HAVE_SECURITY
-                if (!mp_RTPSParticipant->security_manager().discovered_reader(W->getGuid(), (*pit)->m_guid,
-                        *rdatait, W->getAttributes().security_attributes()))
+                if (!mp_RTPSParticipant->security_manager().discovered_reader(writer_guid, (*pit)->m_guid,
+                        *rdatait, writer->getAttributes().security_attributes()))
                 {
-                    EPROSIMA_LOG_ERROR(RTPS_EDP, "Security manager returns an error for writer " << W->getGuid());
+                    EPROSIMA_LOG_ERROR(RTPS_EDP, "Security manager returns an error for writer " << writer_guid);
                 }
 #else
-                if (W->matched_reader_add(*rdatait))
+                if (writer->matched_reader_add_edp(*rdatait))
                 {
                     EPROSIMA_LOG_INFO(RTPS_EDP_MATCH,
-                            "RP:" << rdatait->guid() << " match W:" << W->getGuid() << ". WLoc:" <<
+                            "RP:" << rdatait->guid() << " match W:" << writer_guid << ". WLoc:" <<
                             rdatait->remote_locators());
                     //MATCHED AND ADDED CORRECTLY:
-                    if (W->get_listener() != nullptr)
+                    if (writer->get_listener() != nullptr)
                     {
                         MatchingInfo info;
                         info.status = MATCHED_MATCHING;
                         info.remoteEndpointGuid = reader_guid;
-                        W->get_listener()->on_writer_matched(W, info);
+                        writer->get_listener()->on_writer_matched(writer, info);
                     }
                 }
 #endif // if HAVE_SECURITY
             }
             else
             {
-                if (no_match_reason.test(MatchingFailureMask::incompatible_qos) && W->get_listener() != nullptr)
+                if (no_match_reason.test(MatchingFailureMask::incompatible_qos) && writer->get_listener() != nullptr)
                 {
-                    W->get_listener()->on_offered_incompatible_qos(W, incompatible_qos);
+                    writer->get_listener()->on_offered_incompatible_qos(writer, incompatible_qos);
                 }
 
                 //EPROSIMA_LOG_INFO(RTPS_EDP,RTPS_CYAN<<"Valid Matching to writerProxy: "<<wdatait->m_guid<<RTPS_DEF<<endl);
-                if (W->matched_reader_is_matched(reader_guid) && W->matched_reader_remove(reader_guid))
+                if (writer->matched_reader_is_matched(reader_guid) && writer->matched_reader_remove(reader_guid))
                 {
 #if HAVE_SECURITY
-                    mp_RTPSParticipant->security_manager().remove_reader(W->getGuid(), participant_guid, reader_guid);
+                    mp_RTPSParticipant->security_manager().remove_reader(writer_guid, participant_guid, reader_guid);
 #endif // if HAVE_SECURITY
                     //MATCHED AND ADDED CORRECTLY:
-                    if (W->get_listener() != nullptr)
+                    if (writer->get_listener() != nullptr)
                     {
                         MatchingInfo info;
                         info.status = REMOVED_MATCHING;
                         info.remoteEndpointGuid = reader_guid;
-                        W->get_listener()->on_writer_matched(W, info);
+                        writer->get_listener()->on_writer_matched(writer, info);
                     }
                 }
             }
@@ -960,7 +965,7 @@ bool EDP::pairing_reader_proxy_with_any_local_writer(
                             EPROSIMA_LOG_ERROR(RTPS_EDP, "Security manager returns an error for writer " << writerGUID);
                         }
 #else
-                        if (w.matched_reader_add(*rdata))
+                        if (w.matched_reader_add_edp(*rdata))
                         {
                             EPROSIMA_LOG_INFO(RTPS_EDP_MATCH,
                             "RP:" << rdata->guid() << " match W:" << w.getGuid() << ". RLoc:" <<
@@ -1092,7 +1097,7 @@ bool EDP::pairing_remote_reader_with_local_writer_after_security(
                 {
                     found = true;
 
-                    if (w.matched_reader_add(remote_reader_data))
+                    if (w.matched_reader_add_edp(remote_reader_data))
                     {
                         EPROSIMA_LOG_INFO(RTPS_EDP, "Valid Matching to local writer: " << writerGUID.entityId);
 
@@ -1151,7 +1156,7 @@ bool EDP::pairing_writer_proxy_with_any_local_reader(
                             EPROSIMA_LOG_ERROR(RTPS_EDP, "Security manager returns an error for reader " << readerGUID);
                         }
 #else
-                        if (r.matched_writer_add(*wdata))
+                        if (r.matched_writer_add_edp(*wdata))
                         {
                             EPROSIMA_LOG_INFO(RTPS_EDP_MATCH,
                             "WP:" << wdata->guid() << " match R:" << r.getGuid() << ". WLoc:" <<
@@ -1285,7 +1290,7 @@ bool EDP::pairing_remote_writer_with_local_reader_after_security(
                 {
                     found = true;
 
-                    if (r.matched_writer_add(remote_writer_data))
+                    if (r.matched_writer_add_edp(remote_writer_data))
                     {
                         EPROSIMA_LOG_INFO(RTPS_EDP, "Valid Matching to local reader: " << readerGUID.entityId);
 

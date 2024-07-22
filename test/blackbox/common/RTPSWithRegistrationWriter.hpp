@@ -51,9 +51,9 @@ public:
     typedef typename type_support::type type;
 
     using OnReaderDiscoveryFunctor = std::function <void (
-                        eprosima::fastdds::rtps::ReaderDiscoveryInfo::DISCOVERY_STATUS,
+                        eprosima::fastdds::rtps::ReaderDiscoveryStatus,
                         const eprosima::fastdds::rtps::GUID_t&,
-                        const eprosima::fastdds::rtps::ReaderProxyData*
+                        const eprosima::fastdds::rtps::SubscriptionBuiltinTopicData*
                         )>;
 
 private:
@@ -88,9 +88,9 @@ private:
 
         void on_reader_discovery(
                 eprosima::fastdds::rtps::RTPSWriter* writer,
-                eprosima::fastdds::rtps::ReaderDiscoveryInfo::DISCOVERY_STATUS reason,
+                eprosima::fastdds::rtps::ReaderDiscoveryStatus reason,
                 const eprosima::fastdds::rtps::GUID_t& reader_guid,
-                const eprosima::fastdds::rtps::ReaderProxyData* reader_info) override
+                const eprosima::fastdds::rtps::SubscriptionBuiltinTopicData* reader_info) override
         {
             writer_.on_reader_discovery(writer, reason, reader_guid, reader_info);
         }
@@ -124,7 +124,7 @@ public:
         , initialized_(false)
         , matched_(0)
     {
-        topic_attr_.topicDataType = type_.getName();
+        topic_attr_.topicDataType = type_.get_name();
         // Generate topic name
         std::ostringstream t;
         t << topic_name << "_" << asio::ip::host_name() << "_" << GET_PID();
@@ -159,7 +159,7 @@ public:
         ASSERT_NE(participant_, nullptr);
 
         //Create writerhistory
-        hattr_.payloadMaxSize = type_.m_typeSize;
+        hattr_.payloadMaxSize = type_.max_serialized_type_size;
         if (has_payload_pool_)
         {
             history_ = new eprosima::fastdds::rtps::WriterHistory(hattr_, payload_pool_);
@@ -565,9 +565,9 @@ private:
 
     void on_reader_discovery(
             eprosima::fastdds::rtps::RTPSWriter* writer,
-            eprosima::fastdds::rtps::ReaderDiscoveryInfo::DISCOVERY_STATUS reason,
+            eprosima::fastdds::rtps::ReaderDiscoveryStatus reason,
             const eprosima::fastdds::rtps::GUID_t& reader_guid,
-            const eprosima::fastdds::rtps::ReaderProxyData* reader_info)
+            const eprosima::fastdds::rtps::SubscriptionBuiltinTopicData* reader_info)
     {
         ASSERT_EQ(writer_, writer);
 

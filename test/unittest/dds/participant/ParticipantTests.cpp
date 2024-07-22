@@ -92,61 +92,53 @@ public:
     TopicDataTypeMock()
         : TopicDataType()
     {
-        m_typeSize = 4u;
-        setName("footype");
-    }
-
-    bool serialize(
-            const void* const data,
-            eprosima::fastdds::rtps::SerializedPayload_t* payload) override
-    {
-        return serialize(data, payload, eprosima::fastdds::dds::DEFAULT_DATA_REPRESENTATION);
+        max_serialized_type_size = 4u;
+        set_name("footype");
     }
 
     bool serialize(
             const void* const /*data*/,
-            fastdds::rtps::SerializedPayload_t* /*payload*/,
+            fastdds::rtps::SerializedPayload_t& /*payload*/,
             DataRepresentationId_t /*data_representation*/) override
     {
         return true;
     }
 
     bool deserialize(
-            fastdds::rtps::SerializedPayload_t* /*payload*/,
+            fastdds::rtps::SerializedPayload_t& /*payload*/,
             void* /*data*/) override
     {
         return true;
     }
 
-    std::function<uint32_t()> getSerializedSizeProvider(
-            const void* const data) override
-    {
-        return getSerializedSizeProvider(data, eprosima::fastdds::dds::DEFAULT_DATA_REPRESENTATION);
-    }
-
-    std::function<uint32_t()> getSerializedSizeProvider(
+    uint32_t calculate_serialized_size(
             const void* const /*data*/,
             DataRepresentationId_t /*data_representation*/) override
     {
-        return []()->uint32_t
-               {
-                   return 0;
-               };
+        return 0;
     }
 
-    void* createData() override
+    void* create_data() override
     {
         return nullptr;
     }
 
-    void deleteData(
+    void delete_data(
             void* /*data*/) override
     {
     }
 
-    bool getKey(
+    bool compute_key(
+            fastdds::rtps::SerializedPayload_t& /*payload*/,
+            fastdds::rtps::InstanceHandle_t& /*ihandle*/,
+            bool /*force_md5*/) override
+    {
+        return true;
+    }
+
+    bool compute_key(
             const void* const /*data*/,
-            fastdds::rtps::InstanceHandle_t* /*ihandle*/,
+            fastdds::rtps::InstanceHandle_t& /*ihandle*/,
             bool /*force_md5*/) override
     {
         return true;
@@ -154,7 +146,7 @@ public:
 
     void clearName()
     {
-        setName("");
+        set_name("");
     }
 
 };
@@ -166,64 +158,43 @@ public:
     LoanableTopicDataTypeMock()
         : TopicDataType()
     {
-        m_typeSize = 4u;
-        setName("loanablefootype");
-    }
-
-    bool serialize(
-            const void* const data,
-            eprosima::fastdds::rtps::SerializedPayload_t* payload) override
-    {
-        return serialize(data, payload, eprosima::fastdds::dds::DEFAULT_DATA_REPRESENTATION);
+        max_serialized_type_size = 4u;
+        set_name("loanablefootype");
     }
 
     bool serialize(
             const void* const /*data*/,
-            fastdds::rtps::SerializedPayload_t* /*payload*/,
+            fastdds::rtps::SerializedPayload_t& /*payload*/,
             DataRepresentationId_t /*data_representation*/) override
     {
         return true;
     }
 
     bool deserialize(
-            fastdds::rtps::SerializedPayload_t* /*payload*/,
+            fastdds::rtps::SerializedPayload_t& /*payload*/,
             void* /*data*/) override
     {
         return true;
     }
 
-    std::function<uint32_t()> getSerializedSizeProvider(
-            const void* const data) override
-    {
-        return getSerializedSizeProvider(data, eprosima::fastdds::dds::DEFAULT_DATA_REPRESENTATION);
-    }
-
-    std::function<uint32_t()> getSerializedSizeProvider(
+    uint32_t calculate_serialized_size(
             const void* const /*data*/,
             DataRepresentationId_t /*data_representation*/) override
     {
-        return []()->uint32_t
-               {
-                   return 0;
-               };
+        return 0;
     }
 
-    void* createData() override
+    void* create_data() override
     {
         return nullptr;
     }
 
-    void deleteData(
+    void delete_data(
             void* /*data*/) override
     {
     }
 
     inline bool is_bounded() const override
-    {
-        return true;
-    }
-
-    inline bool is_plain() const override
     {
         return true;
     }
@@ -234,9 +205,17 @@ public:
         return true;
     }
 
-    bool getKey(
+    bool compute_key(
+            fastdds::rtps::SerializedPayload_t& /*payload*/,
+            fastdds::rtps::InstanceHandle_t& /*ihandle*/,
+            bool /*force_md5*/) override
+    {
+        return true;
+    }
+
+    bool compute_key(
             const void* const /*data*/,
-            fastdds::rtps::InstanceHandle_t* /*ihandle*/,
+            fastdds::rtps::InstanceHandle_t& /*ihandle*/,
             bool /*force_md5*/) override
     {
         return true;
@@ -646,6 +625,22 @@ TEST(ParticipantTests, CreateDomainParticipantWithExtendedQosFromProfile)
             DomainParticipantFactory::get_instance()->create_participant(extended_qos);
     check_participant_extended_qos_from_profile(new_participant, "test_participant_profile");
     ASSERT_TRUE(DomainParticipantFactory::get_instance()->delete_participant(new_participant) == RETCODE_OK);
+}
+
+/**
+ *  This test checks that get_participant_extended_qos_from_default_profile holds the correct domain ID.
+ */
+TEST(ParticipantTests, get_participant_extended_qos_from_default_profile)
+{
+    DomainParticipantFactory::get_instance()->load_XML_profiles_file("test_xml_profile.xml");
+
+    uint32_t domain_id = 123u; // This is the domain ID set in the default profile above
+
+    DomainParticipantExtendedQos extended_qos;
+    ASSERT_TRUE(DomainParticipantFactory::get_instance()->get_participant_extended_qos_from_default_profile(
+                extended_qos) == RETCODE_OK);
+
+    ASSERT_EQ(extended_qos.domainId(), domain_id);
 }
 
 TEST(ParticipantTests, CreateDomainParticipantWithDefaultProfile)
@@ -3279,7 +3274,7 @@ TEST(ParticipantTests, DeleteContainedEntities)
     InstanceHandle_t handle_nil = HANDLE_NIL;
     BarType data;
     data.index(1);
-    type.get_key(&data, &handle_nil);
+    type.compute_key(&data, handle_nil);
 
     TypeSupport loanable_type(new LoanableTopicDataTypeMock());
     loanable_type.register_type(participant);
