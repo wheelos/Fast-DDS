@@ -53,11 +53,10 @@ cc_library(
         "thirdparty/boost/include/**/*.h",
         "thirdparty/boost/include/**/*.hpp",
         "thirdparty/boost/include/**/*.ipp",
+        "thirdparty/taocpp-pegtl/**/*.hpp",
     ]) + [
         "thirdparty/filewatch/FileWatch.hpp",
         "thirdparty/nlohmann-json/nlohmann/json.hpp",
-        "thirdparty/taocpp-pegtl/pegtl/contrib/parse_tree.hpp",
-        "thirdparty/taocpp-pegtl/pegtl.hpp",
         ":configure_file",
     ],
     srcs = [
@@ -287,7 +286,12 @@ cc_library(
         "src/cpp/statistics/fastdds/domain/DomainParticipant.cpp",
         "src/cpp/statistics/fastdds/publisher/qos/DataWriterQos.cpp",
         "src/cpp/statistics/fastdds/subscriber/qos/DataReaderQos.cpp",
-    ],
+    ] + [
+        "src/cpp/rtps/transport/shared_mem/test_SharedMemTransport.cpp",
+        "src/cpp/rtps/transport/shared_mem/SharedMemTransport.cpp"
+    ] + glob([
+        "src/cpp/fastdds/topic/DDSSQLFilter/*.cpp",
+    ]),
     includes = [
         "include",
         "src/cpp",
