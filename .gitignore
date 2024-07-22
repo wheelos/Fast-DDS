@@ -445,3 +445,7 @@ compile_commands.json
 
 # Uncrustify
 uncrustify.cfg
+
+bazel-*
+
+*.lock
