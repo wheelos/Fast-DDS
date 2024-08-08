@@ -19,6 +19,7 @@
 #ifndef FASTDDS_DDS_PUBLISHER__DATAWRITER_HPP
 #define FASTDDS_DDS_PUBLISHER__DATAWRITER_HPP
 
+#include <fastdds/dds/builtin/topic/PublicationBuiltinTopicData.hpp>
 #include <fastdds/dds/builtin/topic/SubscriptionBuiltinTopicData.hpp>
 #include <fastdds/dds/core/Entity.hpp>
 #include <fastdds/dds/core/ReturnCode.hpp>
@@ -28,9 +29,9 @@
 #include <fastdds/dds/core/status/PublicationMatchedStatus.hpp>
 #include <fastdds/dds/core/status/StatusMask.hpp>
 #include <fastdds/dds/publisher/qos/DataWriterQos.hpp>
+#include <fastdds/fastdds_dll.hpp>
 #include <fastdds/rtps/common/LocatorList.hpp>
 #include <fastdds/rtps/common/Time_t.hpp>
-#include <fastdds/fastdds_dll.hpp>
 
 namespace eprosima {
 namespace fastdds {
@@ -178,7 +179,7 @@ public:
     FASTDDS_EXPORTED_API ReturnCode_t write_w_timestamp(
             const void* const data,
             const InstanceHandle_t& handle,
-            const fastdds::Time_t& timestamp);
+            const fastdds::dds::Time_t& timestamp);
 
     /*!
      * @brief Informs that the application will be modifying a particular instance.
@@ -212,7 +213,7 @@ public:
      */
     FASTDDS_EXPORTED_API InstanceHandle_t register_instance_w_timestamp(
             const void* const instance,
-            const fastdds::Time_t& timestamp);
+            const fastdds::dds::Time_t& timestamp);
 
     /*!
      * @brief This operation reverses the action of `register_instance`.
@@ -251,7 +252,7 @@ public:
     FASTDDS_EXPORTED_API ReturnCode_t unregister_instance_w_timestamp(
             const void* const instance,
             const InstanceHandle_t& handle,
-            const fastdds::Time_t& timestamp);
+            const fastdds::dds::Time_t& timestamp);
 
     /**
      * This operation can be used to retrieve the instance key that corresponds to an
@@ -313,7 +314,7 @@ public:
      * @return RETCODE_OK if the DataWriter receive the acknowledgments before the time expires and RETCODE_ERROR otherwise
      */
     FASTDDS_EXPORTED_API ReturnCode_t wait_for_acknowledgments(
-            const fastdds::Duration_t& max_wait);
+            const fastdds::dds::Duration_t& max_wait);
 
     /**
      * @brief Returns the offered deadline missed status
@@ -444,7 +445,7 @@ public:
     FASTDDS_EXPORTED_API ReturnCode_t dispose_w_timestamp(
             const void* const instance,
             const InstanceHandle_t& handle,
-            const fastdds::Time_t& timestamp);
+            const fastdds::dds::Time_t& timestamp);
     /**
      * @brief Returns the liveliness lost status
      *
@@ -582,7 +583,18 @@ public:
     FASTDDS_EXPORTED_API ReturnCode_t wait_for_acknowledgments(
             const void* const instance,
             const InstanceHandle_t& handle,
-            const fastdds::Duration_t& max_wait);
+            const fastdds::dds::Duration_t& max_wait);
+
+    /**
+     * Retrieve the publication data discovery information.
+     *
+     * @param [out] publication_data The publication data discovery information.
+     *
+     * @return NOT_ENABLED if the writer has not been enabled.
+     * @return OK if the publication data is returned.
+     */
+    FASTDDS_EXPORTED_API ReturnCode_t get_publication_builtin_topic_data(
+            PublicationBuiltinTopicData& publication_data) const;
 
 protected:
 

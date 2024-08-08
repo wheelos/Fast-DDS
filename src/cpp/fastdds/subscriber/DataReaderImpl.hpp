@@ -17,9 +17,8 @@
  *
  */
 
-#ifndef _FASTDDS_DATAREADERIMPL_HPP_
-#define _FASTDDS_DATAREADERIMPL_HPP_
-#ifndef DOXYGEN_SHOULD_SKIP_THIS_PUBLIC
+#ifndef FASTDDS_SUBSCRIBER__DATAREADERIMPL_HPP
+#define FASTDDS_SUBSCRIBER__DATAREADERIMPL_HPP
 
 #include <mutex>
 
@@ -34,7 +33,6 @@
 #include <fastdds/dds/subscriber/SampleInfo.hpp>
 #include <fastdds/dds/topic/TypeSupport.hpp>
 #include <fastdds/rtps/attributes/ReaderAttributes.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
 #include <fastdds/rtps/common/Guid.hpp>
 #include <fastdds/rtps/common/LocatorList.hpp>
 #include <fastdds/rtps/history/IPayloadPool.hpp>
@@ -46,6 +44,7 @@
 #include <fastdds/subscriber/DataReaderImpl/StateFilter.hpp>
 #include <fastdds/subscriber/history/DataReaderHistory.hpp>
 #include <fastdds/subscriber/SubscriberImpl.hpp>
+#include <fastdds/dds/builtin/topic/SubscriptionBuiltinTopicData.hpp>
 #include <rtps/history/ITopicPayloadPool.h>
 
 namespace eprosima {
@@ -118,7 +117,7 @@ public:
      * Method to block the current thread until an unread message is available
      */
     bool wait_for_unread_message(
-            const fastdds::Duration_t& timeout);
+            const fastdds::dds::Duration_t& timeout);
 
 
     /** @name Read or take data methods.
@@ -284,7 +283,7 @@ public:
 
     /* TODO
        bool wait_for_historical_data(
-       const fastdds::Duration_t& max_wait) const;
+       const fastdds::dds::Duration_t& max_wait) const;
      */
 
     //! Remove all listeners in the hierarchy to allow a quiet destruction
@@ -374,6 +373,17 @@ public:
     void try_notify_read_conditions() noexcept;
 
     std::recursive_mutex& get_conditions_mutex() const noexcept;
+
+    /**
+     * Retrieve the subscription data discovery information.
+     *
+     * @param [out] subscription_data The subscription data discovery information.
+     *
+     * @return NOT_ENABLED if the reader has not been enabled.
+     * @return OK if the subscription data is returned.
+     */
+    ReturnCode_t get_subscription_builtin_topic_data(
+            SubscriptionBuiltinTopicData& subscription_data) const;
 
 protected:
 
@@ -600,8 +610,6 @@ protected:
      */
     bool lifespan_expired();
 
-    fastdds::TopicAttributes topic_attributes() const;
-
     void subscriber_qos_updated();
 
     RequestedIncompatibleQosStatus& update_requested_incompatible_qos(
@@ -647,6 +655,7 @@ private:
     DataReaderQos get_datareader_qos_from_settings(
             const DataReaderQos& qos);
 
+    bool is_data_sharing_compatible_ = false;
 
 };
 
@@ -654,5 +663,4 @@ private:
 } /* namespace fastdds */
 } /* namespace eprosima */
 
-#endif // ifndef DOXYGEN_SHOULD_SKIP_THIS_PUBLIC
-#endif /* _FASTDDS_DATAREADERIMPL_HPP_*/
+#endif /* FASTDDS_SUBSCRIBER__DATAREADERIMPL_HPP*/

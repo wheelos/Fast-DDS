@@ -35,11 +35,12 @@
 #include <fastdds/domain/DomainParticipantImpl.hpp>
 #include <fastdds/publisher/filtering/DataWriterFilteredChangePool.hpp>
 #include <fastdds/publisher/PublisherImpl.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
+#include <fastdds/rtps/builtin/data/TopicDescription.hpp>
 #include <fastdds/rtps/participant/RTPSParticipant.hpp>
 #include <fastdds/rtps/RTPSDomain.hpp>
 #include <fastdds/rtps/writer/RTPSWriter.hpp>
 
+#include <fastdds/utils/TypePropagation.hpp>
 #include <rtps/builtin/liveliness/WLP.hpp>
 #include <rtps/DataSharing/DataSharingPayloadPool.hpp>
 #include <rtps/DataSharing/WriterPool.hpp>
@@ -47,11 +48,12 @@
 #include <rtps/history/TopicPayloadPoolRegistry.hpp>
 #include <rtps/participant/RTPSParticipantImpl.h>
 #include <rtps/resources/ResourceEvent.h>
-#include <rtps/RTPSDomainImpl.hpp>
 #include <rtps/resources/TimedEvent.h>
+#include <rtps/RTPSDomainImpl.hpp>
 #include <rtps/writer/BaseWriter.hpp>
 #include <rtps/writer/StatefulWriter.hpp>
 #include <utils/TimeConversion.hpp>
+#include <utils/BuiltinTopicKeyConversions.hpp>
 #ifdef FASTDDS_STATISTICS
 #include <statistics/fastdds/domain/DomainParticipantImpl.hpp>
 #include <statistics/types/monitorservice_types.hpp>
@@ -227,7 +229,9 @@ void DataWriterImpl::create_history(
 {
     history_.reset(new DataWriterHistory(
                 payload_pool, change_pool,
-                get_topic_attributes(qos_, *topic_, type_),
+                qos_.history(),
+                qos_.resource_limits(),
+                (type_->is_compute_key_provided ? WITH_KEY : NO_KEY),
                 type_->max_serialized_type_size,
                 qos_.endpoint().history_memory_policy,
                 [this](
@@ -244,9 +248,10 @@ ReturnCode_t DataWriterImpl::enable()
 {
     assert(writer_ == nullptr);
 
-    auto topic_att = get_topic_attributes(qos_, *topic_, type_);
     auto history_att = DataWriterHistory::to_history_attributes(
-        topic_att, type_->max_serialized_type_size, qos_.endpoint().history_memory_policy);
+        qos_.history(),
+        qos_.resource_limits(), (type_->is_compute_key_provided ? WITH_KEY : NO_KEY), type_->max_serialized_type_size,
+        qos_.endpoint().history_memory_policy);
     pool_config_ = PoolConfig::from_history_attributes(history_att);
 
     // When the user requested PREALLOCATED_WITH_REALLOC, but we know the type cannot
@@ -310,7 +315,7 @@ ReturnCode_t DataWriterImpl::enable()
     }
 
     if (qos_.reliable_writer_qos().disable_positive_acks.enabled &&
-            qos_.reliable_writer_qos().disable_positive_acks.duration != c_TimeInfinite)
+            qos_.reliable_writer_qos().disable_positive_acks.duration != dds::c_TimeInfinite)
     {
         w_att.disable_positive_acks = true;
         w_att.keep_duration = qos_.reliable_writer_qos().disable_positive_acks.duration;
@@ -444,7 +449,7 @@ ReturnCode_t DataWriterImpl::enable()
                     qos_.lifespan().duration.to_ns() * 1e-6);
 
     // In case it has been loaded from the persistence DB, expire old samples.
-    if (qos_.lifespan().duration != c_TimeInfinite)
+    if (qos_.lifespan().duration != dds::c_TimeInfinite)
     {
         if (lifespan_expired())
         {
@@ -453,6 +458,11 @@ ReturnCode_t DataWriterImpl::enable()
     }
 
     // REGISTER THE WRITER
+    fastdds::rtps::TopicDescription topic_desc;
+    topic_desc.topic_name = topic_->get_name();
+    topic_desc.type_name = topic_->get_type_name();
+    publisher_->get_participant_impl()->fill_type_information(type_, topic_desc.type_information);
+
     WriterQos wqos = qos_.get_writerqos(get_publisher()->get_qos(), topic_->get_qos());
     if (!is_data_sharing_compatible_)
     {
@@ -469,7 +479,7 @@ ReturnCode_t DataWriterImpl::enable()
             wqos.m_partition.push_back(partition_name.c_str());
         }
     }
-    publisher_->rtps_participant()->registerWriter(writer_, get_topic_attributes(qos_, *topic_, type_), wqos);
+    publisher_->rtps_participant()->register_writer(writer_, topic_desc, wqos);
 
     return RETCODE_OK;
 }
@@ -706,7 +716,7 @@ ReturnCode_t DataWriterImpl::write(
 ReturnCode_t DataWriterImpl::write_w_timestamp(
         const void* const data,
         const InstanceHandle_t& handle,
-        const fastdds::Time_t& timestamp)
+        const fastdds::dds::Time_t& timestamp)
 {
     InstanceHandle_t instance_handle;
     ReturnCode_t ret = RETCODE_OK;
@@ -793,7 +803,7 @@ InstanceHandle_t DataWriterImpl::register_instance(
 
 InstanceHandle_t DataWriterImpl::register_instance_w_timestamp(
         const void* const key,
-        const fastdds::Time_t& timestamp)
+        const fastdds::dds::Time_t& timestamp)
 {
     /// Preconditions
     InstanceHandle_t instance_handle;
@@ -882,7 +892,7 @@ ReturnCode_t DataWriterImpl::unregister_instance(
 ReturnCode_t DataWriterImpl::unregister_instance_w_timestamp(
         const void* const instance,
         const InstanceHandle_t& handle,
-        const fastdds::Time_t& timestamp,
+        const fastdds::dds::Time_t& timestamp,
         bool dispose)
 {
     // Preconditions
@@ -1062,7 +1072,7 @@ ReturnCode_t DataWriterImpl::perform_create_new_change(
             return RETCODE_TIMEOUT;
         }
 
-        if (qos_.deadline().period != c_TimeInfinite)
+        if (qos_.deadline().period != dds::c_TimeInfinite)
         {
             if (!history_->set_next_deadline(
                         handle,
@@ -1083,7 +1093,7 @@ ReturnCode_t DataWriterImpl::perform_create_new_change(
             }
         }
 
-        if (qos_.lifespan().duration != c_TimeInfinite)
+        if (qos_.lifespan().duration != dds::c_TimeInfinite)
         {
             lifespan_duration_us_ = duration<double, std::ratio<1, 1000000>>(
                 qos_.lifespan().duration.to_ns() * 1e-3);
@@ -1175,7 +1185,7 @@ void DataWriterImpl::publisher_qos_updated()
     {
         //NOTIFY THE BUILTIN PROTOCOLS THAT THE WRITER HAS CHANGED
         WriterQos wqos = qos_.get_writerqos(get_publisher()->get_qos(), topic_->get_qos());
-        publisher_->rtps_participant()->updateWriter(writer_, get_topic_attributes(qos_, *topic_, type_), wqos);
+        publisher_->rtps_participant()->update_writer(writer_, wqos);
     }
 }
 
@@ -1224,12 +1234,11 @@ ReturnCode_t DataWriterImpl::set_qos(
         }
 
         //Notify the participant that a Writer has changed its QOS
-        fastdds::TopicAttributes topic_att = get_topic_attributes(qos_, *topic_, type_);
         WriterQos wqos = qos_.get_writerqos(get_publisher()->get_qos(), topic_->get_qos());
-        publisher_->rtps_participant()->updateWriter(writer_, topic_att, wqos);
+        publisher_->rtps_participant()->update_writer(writer_, wqos);
 
         // Deadline
-        if (qos_.deadline().period != c_TimeInfinite)
+        if (qos_.deadline().period != dds::c_TimeInfinite)
         {
             deadline_duration_us_ =
                     duration<double, std::ratio<1, 1000000>>(qos_.deadline().period.to_ns() * 1e-3);
@@ -1241,7 +1250,7 @@ ReturnCode_t DataWriterImpl::set_qos(
         }
 
         // Lifespan
-        if (qos_.lifespan().duration != c_TimeInfinite)
+        if (qos_.lifespan().duration != dds::c_TimeInfinite)
         {
             lifespan_duration_us_ =
                     duration<double, std::ratio<1, 1000000>>(qos_.lifespan().duration.to_ns() * 1e-3);
@@ -1407,7 +1416,7 @@ void DataWriterImpl::InnerDataWriterListener::notify_status_observer(
 #endif //FASTDDS_STATISTICS
 
 ReturnCode_t DataWriterImpl::wait_for_acknowledgments(
-        const Duration_t& max_wait)
+        const dds::Duration_t& max_wait)
 {
     if (writer_ == nullptr)
     {
@@ -1424,7 +1433,7 @@ ReturnCode_t DataWriterImpl::wait_for_acknowledgments(
 ReturnCode_t DataWriterImpl::wait_for_acknowledgments(
         const void* const instance,
         const InstanceHandle_t& handle,
-        const Duration_t& max_wait)
+        const dds::Duration_t& max_wait)
 {
     // Preconditions
     InstanceHandle_t ih;
@@ -1497,7 +1506,7 @@ ReturnCode_t DataWriterImpl::get_publication_matched_status(
 
 bool DataWriterImpl::deadline_timer_reschedule()
 {
-    assert(qos_.deadline().period != c_TimeInfinite);
+    assert(qos_.deadline().period != dds::c_TimeInfinite);
 
     std::unique_lock<RecursiveTimedMutex> lock(writer_->getMutex());
 
@@ -1515,7 +1524,7 @@ bool DataWriterImpl::deadline_timer_reschedule()
 
 bool DataWriterImpl::deadline_missed()
 {
-    assert(qos_.deadline().period != c_TimeInfinite);
+    assert(qos_.deadline().period != dds::c_TimeInfinite);
 
     std::unique_lock<RecursiveTimedMutex> lock(writer_->getMutex());
 
@@ -1676,27 +1685,98 @@ ReturnCode_t DataWriterImpl::assert_liveliness()
     return RETCODE_OK;
 }
 
-fastdds::TopicAttributes DataWriterImpl::get_topic_attributes(
-        const DataWriterQos& qos,
-        const Topic& topic,
-        const TypeSupport& type)
+ReturnCode_t DataWriterImpl::get_publication_builtin_topic_data(
+        PublicationBuiltinTopicData& publication_data) const
 {
-    fastdds::TopicAttributes topic_att;
-    topic_att.historyQos = qos.history();
-    topic_att.resourceLimitsQos = qos.resource_limits();
-    topic_att.topicName = topic.get_name();
-    topic_att.topicDataType = topic.get_type_name();
-    topic_att.topicKind = type->is_compute_key_provided ? WITH_KEY : NO_KEY;
-    if (type->auto_fill_type_information() && xtypes::TK_NONE != type->type_identifiers().type_identifier1()._d())
+    if (nullptr == writer_)
     {
-        if (RETCODE_OK ==
-                fastdds::rtps::RTPSDomainImpl::get_instance()->type_object_registry_observer().get_type_information(
-                    type->type_identifiers(), topic_att.type_information.type_information))
+        return RETCODE_NOT_ENABLED;
+    }
+
+    // sanity checks
+    assert(nullptr != publisher_);
+    assert(nullptr != topic_);
+    assert(nullptr != publisher_->get_participant());
+    assert(nullptr != writer_->get_participant_impl());
+
+    publication_data = PublicationBuiltinTopicData{};
+
+    from_proxy_to_builtin(guid_.entityId, publication_data.key.value);
+    from_proxy_to_builtin(publisher_->get_participant()->guid().guidPrefix, publication_data.participant_key.value);
+
+    publication_data.topic_name = topic_->get_name();
+    publication_data.type_name = topic_->get_type_name();
+    publication_data.topic_kind = type_->is_compute_key_provided ? TopicKind_t::WITH_KEY : TopicKind_t::NO_KEY;
+
+    // DataWriter qos
+    publication_data.durability = qos_.durability();
+    publication_data.durability_service = qos_.durability_service();
+    publication_data.deadline = qos_.deadline();
+    publication_data.latency_budget = qos_.latency_budget();
+    publication_data.liveliness = qos_.liveliness();
+    publication_data.reliability = qos_.reliability();
+    publication_data.lifespan = qos_.lifespan();
+    publication_data.user_data = qos_.user_data();
+    publication_data.ownership = qos_.ownership();
+    publication_data.ownership_strength = qos_.ownership_strength();
+    publication_data.destination_order = qos_.destination_order();
+
+    // Publisher qos
+    publication_data.presentation = publisher_->qos_.presentation();
+    publication_data.partition = publisher_->qos_.partition();
+    publication_data.topic_data = topic_->get_qos().topic_data();
+    publication_data.group_data = publisher_->qos_.group_data();
+
+    // XTypes 1.3
+    publisher_->get_participant_impl()->fill_type_information(type_, publication_data.type_information);
+    publication_data.representation = qos_.representation();
+
+    // eProsima extensions
+
+    publication_data.disable_positive_acks = qos_.reliable_writer_qos().disable_positive_acks;
+    publication_data.data_sharing = qos_.data_sharing();
+
+    if (publication_data.data_sharing.kind() != OFF &&
+            publication_data.data_sharing.domain_ids().empty())
+    {
+        publication_data.data_sharing.add_domain_id(utils::default_domain_id());
+    }
+
+    publication_data.guid = guid();
+    publication_data.participant_guid = publisher_->get_participant()->guid();
+
+    const std::string* pers_guid = PropertyPolicyHelper::find_property(qos_.properties(), "dds.persistence.guid");
+    if (pers_guid)
+    {
+        // Load persistence_guid from property
+        std::istringstream(pers_guid->c_str()) >> publication_data.persistence_guid;
+    }
+
+    qos_.endpoint().unicast_locator_list.copy_to(publication_data.remote_locators.unicast);
+    qos_.endpoint().multicast_locator_list.copy_to(publication_data.remote_locators.multicast);
+    publication_data.max_serialized_size = type_->max_serialized_type_size;
+    publication_data.loopback_transformation =
+            writer_->get_participant_impl()->network_factory().network_configuration();
+
+    if (!is_data_sharing_compatible_)
+    {
+        publication_data.data_sharing.off();
+    }
+
+    const std::string* endpoint_partitions = PropertyPolicyHelper::find_property(qos_.properties(), "partitions");
+    if (endpoint_partitions)
+    {
+        std::istringstream partition_string(*endpoint_partitions);
+        std::string partition_name;
+        publication_data.partition.clear();
+
+        while (std::getline(partition_string, partition_name, ';'))
         {
-            topic_att.type_information.assigned(true);
+            publication_data.partition.push_back(partition_name.c_str());
         }
     }
-    return topic_att;
+
+    return RETCODE_OK;
 }
 
 OfferedIncompatibleQosStatus& DataWriterImpl::update_offered_incompatible_qos(
@@ -1897,7 +1977,7 @@ ReturnCode_t DataWriterImpl::check_qos(
             EPROSIMA_LOG_ERROR(RTPS_QOS_CHECK, "BEST_EFFORT incompatible with pull mode");
             return RETCODE_INCONSISTENT_POLICY;
         }
-        if (c_TimeInfinite == qos.reliable_writer_qos().times.heartbeat_period)
+        if (dds::c_TimeInfinite == qos.reliable_writer_qos().times.heartbeat_period)
         {
             EPROSIMA_LOG_ERROR(RTPS_QOS_CHECK, "Infinite heartbeat period incompatible with pull mode");
             return RETCODE_INCONSISTENT_POLICY;
@@ -1906,7 +1986,7 @@ ReturnCode_t DataWriterImpl::check_qos(
     if (qos.liveliness().kind == AUTOMATIC_LIVELINESS_QOS ||
             qos.liveliness().kind == MANUAL_BY_PARTICIPANT_LIVELINESS_QOS)
     {
-        if (qos.liveliness().lease_duration < eprosima::fastdds::c_TimeInfinite &&
+        if (qos.liveliness().lease_duration < eprosima::fastdds::dds::c_TimeInfinite &&
                 qos.liveliness().lease_duration <= qos.liveliness().announcement_period)
         {
             EPROSIMA_LOG_ERROR(RTPS_QOS_CHECK, "WRITERQOS: LeaseDuration <= announcement period.");

@@ -23,17 +23,17 @@
 
 #include <fastdds/core/policy/ParameterList.hpp>
 #include <fastdds/dds/log/Log.hpp>
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
 #include <fastdds/rtps/common/InstanceHandle.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
 
 #include <fastdds/builtin/type_lookup_service/TypeLookupManager.hpp>
-#include <rtps/builtin/discovery/endpoint/EDPSimple.h>
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/data/ReaderProxyData.hpp>
 #include <rtps/builtin/data/WriterProxyData.hpp>
+#include <rtps/builtin/discovery/endpoint/EDPSimple.h>
 #include <rtps/builtin/discovery/participant/PDPSimple.h>
-#include <rtps/network/NetworkFactory.h>
+#include <rtps/network/NetworkFactory.hpp>
 #include <rtps/reader/StatefulReader.hpp>
 #include <rtps/writer/StatefulWriter.hpp>
 
@@ -70,12 +70,12 @@ void EDPBasePUBListener::add_writer_from_change(
         const EndpointAddedCallback& writer_added_callback /* = nullptr*/)
 {
     //LOAD INFORMATION IN DESTINATION WRITER PROXY DATA
-    const NetworkFactory& network = edp->mp_RTPSParticipant->network_factory();
+    NetworkFactory& network = edp->mp_RTPSParticipant->network_factory();
     CDRMessage_t tempMsg(change->serializedPayload);
     auto temp_writer_data = edp->get_temporary_writer_proxies_pool().get();
+    const auto type_server = change->writerGUID;
 
-    if (temp_writer_data->readFromCDRMessage(&tempMsg, network,
-            edp->mp_RTPSParticipant->has_shm_transport(), true, change->vendor_id))
+    if (temp_writer_data->readFromCDRMessage(&tempMsg, network, true, change->vendor_id))
     {
         if (temp_writer_data->guid().guidPrefix == edp->mp_RTPSParticipant->getGuid().guidPrefix)
         {
@@ -134,17 +134,21 @@ void EDPBasePUBListener::add_writer_from_change(
         // At this point, we can release the reader lock because the change is not used
         reader->getMutex().unlock();
 
+        auto typelookup_manager = edp->mp_RTPSParticipant->typelookup_manager();
+
         // Check if TypeInformation exists to start the typelookup service
-        if (temp_writer_data->type_information().assigned())
+        if (nullptr != typelookup_manager && temp_writer_data->type_information().assigned())
         {
-            edp->mp_RTPSParticipant->typelookup_manager()->async_get_type(
+            typelookup_manager->async_get_type(
                 temp_writer_data,
+                type_server,
                 after_typelookup_callback);
         }
         // If TypeInformation does not exist, try fallback mechanism
         else
         {
-            EPROSIMA_LOG_INFO(RTPS_EDP, "EDPBasePUBListener: No TypeInformation. Trying fallback mechanism");
+            EPROSIMA_LOG_INFO(
+                RTPS_EDP, "EDPSimpleListener: No TypeLookupManager or TypeInformation. Trying fallback mechanism");
             after_typelookup_callback(temp_writer_data.get());
         }
         // Release temporary proxy
@@ -210,12 +214,12 @@ void EDPBaseSUBListener::add_reader_from_change(
         const EndpointAddedCallback& reader_added_callback /* = nullptr*/)
 {
     //LOAD INFORMATION IN TEMPORAL READER PROXY DATA
-    const NetworkFactory& network = edp->mp_RTPSParticipant->network_factory();
+    NetworkFactory& network = edp->mp_RTPSParticipant->network_factory();
     CDRMessage_t tempMsg(change->serializedPayload);
     auto temp_reader_data = edp->get_temporary_reader_proxies_pool().get();
+    const auto type_server = change->writerGUID;
 
-    if (temp_reader_data->readFromCDRMessage(&tempMsg, network,
-            edp->mp_RTPSParticipant->has_shm_transport(), true, change->vendor_id))
+    if (temp_reader_data->readFromCDRMessage(&tempMsg, network, true, change->vendor_id))
     {
         if (temp_reader_data->guid().guidPrefix == edp->mp_RTPSParticipant->getGuid().guidPrefix)
         {
@@ -275,17 +279,21 @@ void EDPBaseSUBListener::add_reader_from_change(
         // At this point, we can release the reader lock because the change is not used
         reader->getMutex().unlock();
 
+        auto typelookup_manager = edp->mp_RTPSParticipant->typelookup_manager();
+
         // Check if TypeInformation exists to start the typelookup service
-        if (temp_reader_data->type_information().assigned())
+        if (nullptr != typelookup_manager && temp_reader_data->type_information().assigned())
         {
-            edp->mp_RTPSParticipant->typelookup_manager()->async_get_type(
+            typelookup_manager->async_get_type(
                 temp_reader_data,
+                type_server,
                 after_typelookup_callback);
         }
         // If TypeInformation does not exist, try fallback mechanism
         else
         {
-            EPROSIMA_LOG_INFO(RTPS_EDP, "EDPBasePUBListener: No TypeInformation. Trying fallback mechanism");
+            EPROSIMA_LOG_INFO(
+                RTPS_EDP, "EDPSimpleListener: No TypeLookupManager or TypeInformation. Trying fallback mechanism");
             after_typelookup_callback(temp_reader_data.get());
         }
         // Release the temporary proxy

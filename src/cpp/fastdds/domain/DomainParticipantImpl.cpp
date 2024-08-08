@@ -25,7 +25,7 @@
 #include <asio.hpp>
 
 #include <fastdds/core/policy/QosPolicyUtils.hpp>
-#include <fastdds/builtin/type_lookup_service/TypeLookupManager.hpp>
+#include <fastdds/dds/builtin/topic/ParticipantBuiltinTopicData.hpp>
 #include <fastdds/dds/core/ReturnCode.hpp>
 #include <fastdds/dds/domain/DomainParticipant.hpp>
 #include <fastdds/dds/domain/DomainParticipantFactory.hpp>
@@ -49,6 +49,7 @@
 #include <fastdds/rtps/RTPSDomain.hpp>
 #include <fastdds/rtps/writer/WriterDiscoveryStatus.hpp>
 
+#include <fastdds/builtin/type_lookup_service/TypeLookupManager.hpp>
 #include <fastdds/core/policy/QosPolicyUtils.hpp>
 #include <fastdds/publisher/DataWriterImpl.hpp>
 #include <fastdds/publisher/PublisherImpl.hpp>
@@ -58,6 +59,7 @@
 #include <fastdds/topic/TopicProxy.hpp>
 #include <fastdds/topic/TopicProxyFactory.hpp>
 #include <fastdds/utils/QosConverters.hpp>
+#include <fastdds/utils/TypePropagation.hpp>
 #include <rtps/builtin/liveliness/WLP.hpp>
 #include <rtps/RTPSDomainImpl.hpp>
 #include <utils/SystemInfo.hpp>
@@ -65,6 +67,7 @@
 #include <xmlparser/attributes/ReplierAttributes.hpp>
 #include <xmlparser/attributes/RequesterAttributes.hpp>
 #include <xmlparser/attributes/SubscriberAttributes.hpp>
+#include <xmlparser/attributes/TopicAttributes.hpp>
 #include <xmlparser/XMLProfileManager.h>
 
 namespace eprosima {
@@ -73,7 +76,6 @@ namespace dds {
 
 using xmlparser::XMLProfileManager;
 using xmlparser::XMLP_ret;
-using rtps::ParticipantDiscoveryInfo;
 using rtps::RTPSDomain;
 using rtps::RTPSDomainImpl;
 using rtps::RTPSParticipant;
@@ -107,15 +109,15 @@ DomainParticipantImpl::DomainParticipantImpl(
 {
     participant_->impl_ = this;
 
-    PublisherAttributes pub_attr;
+    xmlparser::PublisherAttributes pub_attr;
     XMLProfileManager::getDefaultPublisherAttributes(pub_attr);
     utils::set_qos_from_attributes(default_pub_qos_, pub_attr);
 
-    SubscriberAttributes sub_attr;
+    xmlparser::SubscriberAttributes sub_attr;
     XMLProfileManager::getDefaultSubscriberAttributes(sub_attr);
     utils::set_qos_from_attributes(default_sub_qos_, sub_attr);
 
-    TopicAttributes top_attr;
+    xmlparser::TopicAttributes top_attr;
     XMLProfileManager::getDefaultTopicAttributes(top_attr);
     utils::set_qos_from_attributes(default_topic_qos_, top_attr);
 
@@ -254,6 +256,13 @@ ReturnCode_t DomainParticipantImpl::enable()
     // Should not have failed assigning the GUID
     assert (guid_ != fastdds::rtps::GUID_t::unknown());
 
+    auto qos_check = check_qos(qos_);
+
+    if (RETCODE_OK != qos_check)
+    {
+        return qos_check;
+    }
+
     fastdds::rtps::RTPSParticipantAttributes rtps_attr;
     utils::set_attributes_from_qos(rtps_attr, qos_);
     rtps_attr.participantID = participant_id_;
@@ -371,7 +380,7 @@ ReturnCode_t DomainParticipantImpl::set_qos(
             else
             {
                 // Trigger update of network interfaces by calling update_attributes with current attributes
-                patt = rtps_participant->getRTPSParticipantAttributes();
+                patt = rtps_participant->get_attributes();
             }
         }
     }
@@ -456,7 +465,7 @@ ReturnCode_t DomainParticipantImpl::delete_subscriber(
 
 Topic* DomainParticipantImpl::find_topic(
         const std::string& topic_name,
-        const fastdds::Duration_t& timeout)
+        const fastdds::dds::Duration_t& timeout)
 {
     auto find_fn = [this, &topic_name]()
             {
@@ -818,7 +827,7 @@ Publisher* DomainParticipantImpl::create_publisher_with_profile(
         const StatusMask& mask)
 {
     // TODO (ILG): Change when we have full XML support for DDS QoS profiles
-    PublisherAttributes attr;
+    xmlparser::PublisherAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillPublisherAttributes(profile_name, attr))
     {
         PublisherQos qos = default_pub_qos_;
@@ -1010,7 +1019,7 @@ void DomainParticipantImpl::reset_default_publisher_qos()
 {
     // TODO (ILG): Change when we have full XML support for DDS QoS profiles
     PublisherImpl::set_qos(default_pub_qos_, PUBLISHER_QOS_DEFAULT, true);
-    PublisherAttributes attr;
+    xmlparser::PublisherAttributes attr;
     XMLProfileManager::getDefaultPublisherAttributes(attr);
     utils::set_qos_from_attributes(default_pub_qos_, attr);
 }
@@ -1024,7 +1033,7 @@ ReturnCode_t DomainParticipantImpl::get_publisher_qos_from_profile(
         const std::string& profile_name,
         PublisherQos& qos) const
 {
-    PublisherAttributes attr;
+    xmlparser::PublisherAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillPublisherAttributes(profile_name, attr))
     {
         qos = default_pub_qos_;
@@ -1058,7 +1067,7 @@ void DomainParticipantImpl::reset_default_subscriber_qos()
 {
     // TODO (ILG): Change when we have full XML support for DDS QoS profiles
     SubscriberImpl::set_qos(default_sub_qos_, SUBSCRIBER_QOS_DEFAULT, true);
-    SubscriberAttributes attr;
+    xmlparser::SubscriberAttributes attr;
     XMLProfileManager::getDefaultSubscriberAttributes(attr);
     utils::set_qos_from_attributes(default_sub_qos_, attr);
 }
@@ -1072,7 +1081,7 @@ ReturnCode_t DomainParticipantImpl::get_subscriber_qos_from_profile(
         const std::string& profile_name,
         SubscriberQos& qos) const
 {
-    SubscriberAttributes attr;
+    xmlparser::SubscriberAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillSubscriberAttributes(profile_name, attr))
     {
         qos = default_sub_qos_;
@@ -1106,7 +1115,7 @@ void DomainParticipantImpl::reset_default_topic_qos()
 {
     // TODO (ILG): Change when we have full XML support for DDS QoS profiles
     TopicImpl::set_qos(default_topic_qos_, TOPIC_QOS_DEFAULT, true);
-    TopicAttributes attr;
+    xmlparser::TopicAttributes attr;
     XMLProfileManager::getDefaultTopicAttributes(attr);
     utils::set_qos_from_attributes(default_topic_qos_, attr);
 }
@@ -1120,7 +1129,7 @@ ReturnCode_t DomainParticipantImpl::get_topic_qos_from_profile(
         const std::string& profile_name,
         TopicQos& qos) const
 {
-    TopicAttributes attr;
+    xmlparser::TopicAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillTopicAttributes(profile_name, attr))
     {
         qos = default_topic_qos_;
@@ -1135,7 +1144,7 @@ ReturnCode_t DomainParticipantImpl::get_replier_qos_from_profile(
         const std::string& profile_name,
         ReplierQos& qos) const
 {
-    ReplierAttributes attr;
+    xmlparser::ReplierAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillReplierAttributes(profile_name, attr))
     {
         utils::set_qos_from_attributes(qos, attr);
@@ -1149,7 +1158,7 @@ ReturnCode_t DomainParticipantImpl::get_requester_qos_from_profile(
         const std::string& profile_name,
         RequesterQos& qos) const
 {
-    RequesterAttributes attr;
+    xmlparser::RequesterAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillRequesterAttributes(profile_name, attr))
     {
         utils::set_qos_from_attributes(qos, attr);
@@ -1241,7 +1250,7 @@ bool DomainParticipantImpl::contains_entity(
 }
 
 ReturnCode_t DomainParticipantImpl::get_current_time(
-        fastdds::Time_t& current_time) const
+        fastdds::dds::Time_t& current_time) const
 {
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
@@ -1313,7 +1322,7 @@ Subscriber* DomainParticipantImpl::create_subscriber_with_profile(
         const StatusMask& mask)
 {
     // TODO (ILG): Change when we have full XML support for DDS QoS profiles
-    SubscriberAttributes attr;
+    xmlparser::SubscriberAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillSubscriberAttributes(profile_name, attr))
     {
         SubscriberQos qos = default_sub_qos_;
@@ -1397,7 +1406,7 @@ Topic* DomainParticipantImpl::create_topic_with_profile(
         const StatusMask& mask)
 {
     // TODO (ILG): Change when we have full XML support for DDS QoS profiles
-    TopicAttributes attr;
+    xmlparser::TopicAttributes attr;
     if (XMLP_ret::XML_OK == XMLProfileManager::fillTopicAttributes(profile_name, attr))
     {
         TopicQos qos = default_topic_qos_;
@@ -1531,16 +1540,17 @@ ReturnCode_t DomainParticipantImpl::unregister_type(
     return RETCODE_OK;
 }
 
-void DomainParticipantImpl::MyRTPSParticipantListener::onParticipantDiscovery(
+void DomainParticipantImpl::MyRTPSParticipantListener::on_participant_discovery(
         RTPSParticipant*,
-        ParticipantDiscoveryInfo&& info,
+        eprosima::fastdds::rtps::ParticipantDiscoveryStatus reason,
+        const ParticipantBuiltinTopicData& info,
         bool& should_be_ignored)
 {
     should_be_ignored = false;
     Sentry sentinel(this);
     if (sentinel)
     {
-        participant_->listener_->on_participant_discovery(participant_->participant_, std::move(info),
+        participant_->listener_->on_participant_discovery(participant_->participant_, reason, std::move(info),
                 should_be_ignored);
     }
 }
@@ -1699,12 +1709,30 @@ bool DomainParticipantImpl::set_qos(
 ReturnCode_t DomainParticipantImpl::check_qos(
         const DomainParticipantQos& qos)
 {
-    if (qos.allocation().data_limits.max_user_data == 0 ||
-            qos.allocation().data_limits.max_user_data > qos.user_data().getValue().size())
+    ReturnCode_t ret_val = RETCODE_OK;
+
+    if (qos.allocation().data_limits.max_user_data != 0 &&
+            qos.allocation().data_limits.max_user_data <= qos.user_data().getValue().size())
     {
-        return RETCODE_OK;
+        ret_val = RETCODE_INCONSISTENT_POLICY;
     }
-    return RETCODE_INCONSISTENT_POLICY;
+
+    if (RETCODE_OK == ret_val)
+    {
+        // Check participant's type propagation policy
+        using utils::to_type_propagation;
+        using utils::TypePropagation;
+
+        auto type_propagation = to_type_propagation(qos.properties());
+
+        if (TypePropagation::TYPEPROPAGATION_UNKNOWN == type_propagation)
+        {
+            EPROSIMA_LOG_ERROR(RTPS_QOS_CHECK, "Invalid value for property " << parameter_policy_type_propagation);
+            return RETCODE_INCONSISTENT_POLICY;
+        }
+    }
+
+    return ret_val;
 }
 
 bool DomainParticipantImpl::can_qos_be_updated(
@@ -1855,6 +1883,55 @@ DomainParticipantListener* DomainParticipantImpl::get_listener_for(
         return get_listener();
     }
     return nullptr;
+}
+
+bool DomainParticipantImpl::fill_type_information(
+        const TypeSupport& type,
+        xtypes::TypeInformationParameter& type_information)
+{
+    using utils::to_type_propagation;
+    using utils::TypePropagation;
+
+    auto properties = qos_.properties();
+    auto type_propagation = to_type_propagation(properties);
+    bool should_assign_type_information =
+            (TypePropagation::TYPEPROPAGATION_ENABLED == type_propagation) ||
+            (TypePropagation::TYPEPROPAGATION_MINIMAL_BANDWIDTH == type_propagation);
+
+    if (should_assign_type_information && (xtypes::TK_NONE != type->type_identifiers().type_identifier1()._d()))
+    {
+        xtypes::TypeInformation type_info;
+
+        if (RETCODE_OK ==
+                fastdds::rtps::RTPSDomainImpl::get_instance()->type_object_registry_observer().get_type_information(
+                    type->type_identifiers(), type_info))
+        {
+            switch (type_propagation)
+            {
+                case TypePropagation::TYPEPROPAGATION_ENABLED:
+                {
+                    // Use both complete and minimal type information
+                    type_information.type_information = type_info;
+                    break;
+                }
+                case TypePropagation::TYPEPROPAGATION_MINIMAL_BANDWIDTH:
+                {
+                    // Use minimal type information only
+                    type_information.type_information.minimal() = type_info.minimal();
+                    break;
+                }
+                default:
+                    // This should never happen as other cases are protected by should_assign_type_information
+                    assert(false);
+                    break;
+            }
+
+            type_information.assigned(true);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 }  // namespace dds

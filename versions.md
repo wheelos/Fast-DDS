@@ -16,20 +16,32 @@ Forthcoming
     * Several methods that were meant for internal use have been removed from public API
     * All public methods now have `snake_case` names
     * All public attributes now have `snake_case` names
+  * RTPSParticipant:
+    * Some methods changed to `snake_case`: `register_reader`, `register_writer`, `update_reader`, `update_writer`.
+	* Register methods take a `TopicDescription` instead of `TopicAttributes`.
+	* Update methods no longer take `TopicAttributes`.
+  * Endpoint creation fails if the `EntityId` is inconsistent with the topic kind.
 * Discovery callbacks refactor:
+  * on_participant_discovery now receives a `ParticipantDiscoveryStatus` and a `ParticipantBuiltinTopicData` instead of a `ParticipantDiscoveryInfo`
   * on_data_reader_discovery now receives a `ReaderDiscoveryStatus` and a `SubscriptionBuiltinTopicData` instead of a `ReaderDiscoveryInfo`
   * on_data_writer_discovery now receives a `WriterDiscoveryStatus` and a `PublicationBuiltinTopicData` instead of a `WriterDiscoveryInfo`
+* New methods to get local discovery information:
+  * `DataWriter::get_publication_builtin_topic_data`
+  * `DataReader::get_subscription_builtin_topic_data`
 * Public API that is no longer public:
   * XML Parser API no longer public.
   * ReaderProxyData
   * ReaderDiscoveryInfo
   * WriterProxyData
   * WriterDiscoveryInfo
+  * ParticiantProxyData
+  * ParticiantDiscoveryInfo
   * ParticipantAttributes
   * ReplierAttributes
   * RequesterAttributes
   * PublisherAttributes
   * SubscriberAttributes
+  * TopicAttributes
   * All discovery implementation related API
   * ProxyPool
   * Semaphore
@@ -55,16 +67,18 @@ Forthcoming
 * Calling `DataReader::return_loan` returns `ReturnCode_t::RETCODE_OK` both for empty sequences and for sequences that were not loaned.
 * Refactor examples:
   * Hello world example with wait-sets and environment XML profiles.
-  * Security example with environment XML profiles.
-  * Configuration example that condenses multiple QoS examples. Multiple configurations allowed through argument parsing.
-  * Custom payload pool example that uses a user-defined payload pool instead of the default
   * X-Types example with dynamic type discovery and Hello world example compatibility.
-  * Custom Content filter example
+  * Configuration example that condenses multiple QoS examples. Multiple configurations allowed through argument parsing.
+  * Custom content filter example with lower and upper bounds for data based on the index.
+  * Custom payload pool example that uses a user-defined payload pool instead of the default
   * Delivery mechanisms example with SHM, UDP, TCP, data-sharing and intra-process mechanisms.
   * Discovery server example.
-  * Request-reply example to showcase RPC paradigms over Fast DDS.
-  * Static EDP discovery example to avoid EDP meta-traffic.
   * Flow Controller example with `FlowControllersQos` and property settings.
+  * Request-reply example to showcase RPC paradigms over Fast DDS.
+  * Security example with environment XML profiles.
+  * Static EDP discovery example to avoid EDP meta-traffic.
+  * Topic instances example, compatible with _ShapesDemo_ app.
+  * RTPS example to show the creation of entities in the RTPS layer.
 * Removed `TypeConsistencyQos` from DataReader, and included `TypeConsistencyEnforcementQosPolicy` and `DataRepresentationQosPolicy`
 * Added new `flow_controller_descriptor_list` XML configuration, remove `ThroughtputController`.
 * Migrate `#define`s within `BuiltinEndpoints.hpp` to namespaced `constexpr` variables.
@@ -91,10 +105,16 @@ Forthcoming
   * Servers only redirect discovery information of their direct clients.
   * Remote Discovery servers connection list can now be updated and modified at runtime without restrictions.
   * Fast DDS CLI has been updated to allow the creation of servers without GUID.
+  * Servers are responsible of answering TypeLookupRequests of others servers when working with X-Types.
+  * Backup server is not compatible with X-Types.
 * Refactor in XML Parser to return DynamicTypeBuilder instead of DynamicType
 * Setting vendor_id in the received CacheChange_t for Data and DataFrag.
 * Added new DynamicData to JSON serializer (`json_serialize`).
 * Added new DynamicType to IDL serializer (`idl_serialize`).
+* DDS implementation of `eprosima::fastdds::Time_t` moved to `eprosima::fastdds::dds::Time_t`.
+* `TopicDataType::auto_fill_type_information` has been removed in favor of `fastdds.type_propagation` participant property.
+* Add new custom pid PID_PRODUCT_VERSION.
+* SHM locator kind is now linked to Fast DDS' major version.
 
 Version 2.14.0
 --------------

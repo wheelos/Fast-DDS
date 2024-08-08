@@ -36,6 +36,7 @@
 #include <fastdds/rtps/writer/WriterDiscoveryStatus.hpp>
 #include <fastdds/utils/collections/ResourceLimitedVector.hpp>
 
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/data/ReaderProxyData.hpp>
 #include <rtps/builtin/data/WriterProxyData.hpp>
 #include <statistics/rtps/monitor-service/interfaces/IProxyObserver.hpp>
@@ -320,7 +321,7 @@ public:
      */
     virtual bool remove_remote_participant(
             const GUID_t& participant_guid,
-            ParticipantDiscoveryInfo::DISCOVERY_STATUS reason);
+            ParticipantDiscoveryStatus reason);
 
     /**
      * This method returns the BuiltinAttributes of the local participant.
@@ -341,7 +342,7 @@ public:
      * Get a pointer to the EDP object.
      * @return pointer to the EDP object.
      */
-    inline EDP* getEDP()
+    inline EDP* get_edp()
     {
         return mp_EDP;
     }
@@ -644,17 +645,17 @@ private:
     void actions_on_remote_participant_removed(
             ParticipantProxyData* pdata,
             const GUID_t& partGUID,
-            ParticipantDiscoveryInfo::DISCOVERY_STATUS reason,
+            ParticipantDiscoveryStatus reason,
             RTPSParticipantListener* listener);
 
 };
 
 
 // configuration values for PDP reliable entities.
-extern const Duration_t pdp_heartbeat_period;
-extern const Duration_t pdp_nack_response_delay;
-extern const Duration_t pdp_nack_supression_duration;
-extern const Duration_t pdp_heartbeat_response_delay;
+extern const dds::Duration_t pdp_heartbeat_period;
+extern const dds::Duration_t pdp_nack_response_delay;
+extern const dds::Duration_t pdp_nack_supression_duration;
+extern const dds::Duration_t pdp_heartbeat_response_delay;
 
 extern const int32_t pdp_initial_reserved_caches;
 

@@ -72,7 +72,7 @@ ReturnCode_t DataReader::enable()
 }
 
 bool DataReader::wait_for_unread_message(
-        const fastdds::Duration_t& timeout)
+        const fastdds::dds::Duration_t& timeout)
 {
     return impl_->wait_for_unread_message(timeout);
 }
@@ -456,7 +456,7 @@ const Subscriber* DataReader::get_subscriber() const
 }
 
 ReturnCode_t DataReader::wait_for_historical_data(
-        const Duration_t& max_wait) const
+        const dds::Duration_t& max_wait) const
 {
     static_cast<void> (max_wait);
     return RETCODE_UNSUPPORTED;
@@ -486,6 +486,12 @@ ReturnCode_t DataReader::get_listening_locators(
         rtps::LocatorList& locators) const
 {
     return impl_->get_listening_locators(locators);
+}
+
+ReturnCode_t DataReader::get_subscription_builtin_topic_data(
+        SubscriptionBuiltinTopicData& subscription_data) const
+{
+    return impl_->get_subscription_builtin_topic_data(subscription_data);
 }
 
 } /* namespace dds */

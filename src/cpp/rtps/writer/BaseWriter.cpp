@@ -117,7 +117,7 @@ BaseWriter::~BaseWriter()
 bool BaseWriter::matched_reader_add(
         const SubscriptionBuiltinTopicData& rqos)
 {
-    const auto& alloc = mp_RTPSParticipant->getRTPSParticipantAttributes().allocation;
+    const auto& alloc = mp_RTPSParticipant->get_attributes().allocation;
     ReaderProxyData rdata(
         alloc.locators.max_unicast_locators,
         alloc.locators.max_multicast_locators,
@@ -247,12 +247,12 @@ const dds::LivelinessQosPolicyKind& BaseWriter::get_liveliness_kind() const
     return liveliness_kind_;
 }
 
-const Duration_t& BaseWriter::get_liveliness_lease_duration() const
+const dds::Duration_t& BaseWriter::get_liveliness_lease_duration() const
 {
     return liveliness_lease_duration_;
 }
 
-const Duration_t& BaseWriter::get_liveliness_announcement_period() const
+const dds::Duration_t& BaseWriter::get_liveliness_announcement_period() const
 {
     return liveliness_announcement_period_;
 }

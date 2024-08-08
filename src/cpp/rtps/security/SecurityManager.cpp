@@ -26,18 +26,18 @@
 #include <fastdds/dds/log/Log.hpp>
 #include <fastdds/rtps/attributes/EndpointSecurityAttributes.hpp>
 #include <fastdds/rtps/attributes/HistoryAttributes.hpp>
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
 #include <fastdds/rtps/participant/RTPSParticipantListener.hpp>
 
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/data/ReaderProxyData.hpp>
 #include <rtps/builtin/data/WriterProxyData.hpp>
 #include <rtps/builtin/discovery/endpoint/EDP.h>
 #include <rtps/builtin/discovery/participant/PDP.h>
 #include <rtps/messages/CDRMessage.hpp>
 #include <rtps/history/TopicPayloadPoolRegistry.hpp>
-#include <rtps/network/NetworkFactory.h>
+#include <rtps/network/NetworkFactory.hpp>
 #include <rtps/participant/RTPSParticipantImpl.h>
 #include <rtps/reader/StatefulReader.hpp>
 #include <rtps/reader/StatelessReader.hpp>
@@ -96,14 +96,14 @@ SecurityManager::SecurityManager(
     , auth_last_sequence_number_(1)
     , crypto_last_sequence_number_(1)
     , temp_reader_proxies_({
-                participant->getRTPSParticipantAttributes().allocation.locators.max_unicast_locators,
-                participant->getRTPSParticipantAttributes().allocation.locators.max_multicast_locators,
-                participant->getRTPSParticipantAttributes().allocation.data_limits,
-                participant->getRTPSParticipantAttributes().allocation.content_filter})
+                participant->get_attributes().allocation.locators.max_unicast_locators,
+                participant->get_attributes().allocation.locators.max_multicast_locators,
+                participant->get_attributes().allocation.data_limits,
+                participant->get_attributes().allocation.content_filter})
     , temp_writer_proxies_({
-                participant->getRTPSParticipantAttributes().allocation.locators.max_unicast_locators,
-                participant->getRTPSParticipantAttributes().allocation.locators.max_multicast_locators,
-                participant->getRTPSParticipantAttributes().allocation.data_limits})
+                participant->get_attributes().allocation.locators.max_unicast_locators,
+                participant->get_attributes().allocation.locators.max_multicast_locators,
+                participant->get_attributes().allocation.data_limits})
 {
     assert(participant != nullptr);
     static OpenSSLInit openssl_init;
@@ -122,8 +122,9 @@ bool SecurityManager::init(
     {
         SecurityException exception;
         domain_id_ = participant_->get_domain_id();
+        auto part_attributes = participant_->get_attributes();
         const PropertyPolicy log_properties = PropertyPolicyHelper::get_properties_with_prefix(
-            participant_->getRTPSParticipantAttributes().properties,
+            part_attributes.properties,
             "dds.sec.log.builtin.DDS_LogTopic.");
 
         // length(log_properties) == 0 considered as logging disable.
@@ -212,7 +213,7 @@ bool SecurityManager::init(
         {
             // retrieve authentication properties, if any
             const PropertyPolicy auth_handshake_properties = PropertyPolicyHelper::get_properties_with_prefix(
-                participant_->getRTPSParticipantAttributes().properties,
+                part_attributes.properties,
                 "dds.sec.auth.builtin.PKI-DH.");
 
             // if auth_handshake_properties is empty, the default values are used
@@ -232,7 +233,7 @@ bool SecurityManager::init(
                 ret = authentication_plugin_->validate_local_identity(&local_identity_handle_,
                                 adjusted_participant_key,
                                 domain_id_,
-                                participant_->getRTPSParticipantAttributes(),
+                                part_attributes,
                                 participant_->getGuid(),
                                 exception);
             } while (ret == VALIDATION_PENDING_RETRY && usleep_bool());
@@ -254,7 +255,7 @@ bool SecurityManager::init(
                     local_permissions_handle_ = access_plugin_->validate_local_permissions(
                         *authentication_plugin_, *local_identity_handle_,
                         domain_id_,
-                        participant_->getRTPSParticipantAttributes(),
+                        part_attributes,
                         exception);
 
                     if (local_permissions_handle_ != nullptr)
@@ -263,7 +264,7 @@ bool SecurityManager::init(
                         {
                             if (access_plugin_->check_create_participant(*local_permissions_handle_,
                                     domain_id_,
-                                    participant_->getRTPSParticipantAttributes(), exception))
+                                    part_attributes, exception))
                             {
                                 // Set credentials.
                                 PermissionsCredentialToken* token = nullptr;
@@ -1107,7 +1108,7 @@ bool SecurityManager::create_participant_stateless_message_writer()
         participant_stateless_message_writer_hattr_,
         participant_stateless_message_pool_);
 
-    const RTPSParticipantAttributes& pattr = participant_->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& pattr = participant_->get_attributes();
 
     WriterAttributes watt;
     watt.endpoint.external_unicast_locators = pattr.builtin.metatraffic_external_unicast_locators;
@@ -1156,7 +1157,7 @@ bool SecurityManager::create_participant_stateless_message_reader()
 {
     participant_stateless_message_reader_history_ = new ReaderHistory(participant_stateless_message_reader_hattr_);
 
-    const RTPSParticipantAttributes& pattr = participant_->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& pattr = participant_->get_attributes();
 
     ReaderAttributes ratt;
     ratt.endpoint.topicKind = NO_KEY;
@@ -1256,7 +1257,7 @@ bool SecurityManager::create_participant_volatile_message_secure_writer()
     participant_volatile_message_secure_writer_history_ =
             new WriterHistory(participant_volatile_message_secure_hattr_, participant_volatile_message_secure_pool_);
 
-    const RTPSParticipantAttributes& pattr = participant_->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& pattr = participant_->get_attributes();
 
     WriterAttributes watt;
     watt.endpoint.endpointKind = WRITER;
@@ -1310,7 +1311,7 @@ bool SecurityManager::create_participant_volatile_message_secure_reader()
     participant_volatile_message_secure_reader_history_ =
             new ReaderHistory(participant_volatile_message_secure_hattr_);
 
-    const RTPSParticipantAttributes& pattr = participant_->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& pattr = participant_->get_attributes();
 
     ReaderAttributes ratt;
     ratt.endpoint.topicKind = NO_KEY;
@@ -4068,13 +4069,13 @@ bool SecurityManager::participant_authorized(
 
         for (auto& remote_reader : temp_readers)
         {
-            participant_->pdp()->getEDP()->pairing_reader_proxy_with_local_writer(remote_reader.second,
+            participant_->pdp()->get_edp()->pairing_reader_proxy_with_local_writer(remote_reader.second,
                     participant_data.m_guid, remote_reader.first);
         }
 
         for (auto& remote_writer : temp_writers)
         {
-            participant_->pdp()->getEDP()->pairing_writer_proxy_with_local_reader(remote_writer.second,
+            participant_->pdp()->get_edp()->pairing_writer_proxy_with_local_reader(remote_writer.second,
                     participant_data.m_guid, remote_writer.first);
         }
 

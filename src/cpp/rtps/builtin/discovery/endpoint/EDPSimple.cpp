@@ -29,12 +29,12 @@
 #include <fastdds/rtps/attributes/ReaderAttributes.hpp>
 #include <fastdds/rtps/attributes/WriterAttributes.hpp>
 #include <fastdds/rtps/builtin/data/BuiltinEndpoints.hpp>
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
 #include <fastdds/rtps/reader/RTPSReader.hpp>
 
 #include <rtps/builtin/BuiltinProtocols.h>
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/data/ReaderProxyData.hpp>
 #include <rtps/builtin/data/WriterProxyData.hpp>
 #include <rtps/builtin/discovery/endpoint/EDPSimpleListeners.h>
@@ -55,10 +55,10 @@ namespace fastdds {
 namespace rtps {
 
 // Default configuration values for EDP entities.
-static const Duration_t edp_heartbeat_period{1, 0}; // 1 second
-static const Duration_t edp_nack_response_delay{0, 100 * 1000 }; // 100 milliseconds
-static const Duration_t edp_nack_supression_duration{0, 10 * 1000}; // 10 milliseconds
-static const Duration_t edp_heartbeat_response_delay{0, 10 * 1000}; // 10 milliseconds
+static const dds::Duration_t edp_heartbeat_period{1, 0}; // 1 second
+static const dds::Duration_t edp_nack_response_delay{0, 100 * 1000 }; // 100 milliseconds
+static const dds::Duration_t edp_nack_supression_duration{0, 10 * 1000}; // 10 milliseconds
+static const dds::Duration_t edp_heartbeat_response_delay{0, 10 * 1000}; // 10 milliseconds
 
 static const int32_t edp_reader_initial_reserved_caches = 1;
 static const int32_t edp_writer_initial_reserved_caches = 20;
@@ -521,17 +521,17 @@ bool EDPSimple::create_sedp_secure_endpoints()
 
 #endif // if HAVE_SECURITY
 
-bool EDPSimple::processLocalReaderProxyData(
-        RTPSReader* local_reader,
+bool EDPSimple::process_reader_proxy_data(
+        RTPSReader* rtps_reader,
         ReaderProxyData* rdata)
 {
     EPROSIMA_LOG_INFO(RTPS_EDP, rdata->guid().entityId);
-    (void)local_reader;
+    (void)rtps_reader;
 
     auto* writer = &subscriptions_writer_;
 
 #if HAVE_SECURITY
-    if (local_reader->getAttributes().security_attributes().is_discovery_protected)
+    if (rtps_reader->getAttributes().security_attributes().is_discovery_protected)
     {
         writer = &subscriptions_secure_writer_;
     }
@@ -545,17 +545,17 @@ bool EDPSimple::processLocalReaderProxyData(
     return ret_val;
 }
 
-bool EDPSimple::processLocalWriterProxyData(
-        RTPSWriter* local_writer,
+bool EDPSimple::process_writer_proxy_data(
+        RTPSWriter* rtps_writer,
         WriterProxyData* wdata)
 {
     EPROSIMA_LOG_INFO(RTPS_EDP, wdata->guid().entityId);
-    (void)local_writer;
+    (void)rtps_writer;
 
     auto* writer = &publications_writer_;
 
 #if HAVE_SECURITY
-    if (local_writer->getAttributes().security_attributes().is_discovery_protected)
+    if (rtps_writer->getAttributes().security_attributes().is_discovery_protected)
     {
         writer = &publications_secure_writer_;
     }
@@ -637,15 +637,15 @@ bool EDPSimple::serialize_proxy_data(
     return true;
 }
 
-bool EDPSimple::removeLocalWriter(
-        RTPSWriter* W)
+bool EDPSimple::remove_writer(
+        RTPSWriter* rtps_writer)
 {
-    EPROSIMA_LOG_INFO(RTPS_EDP, W->getGuid().entityId);
+    EPROSIMA_LOG_INFO(RTPS_EDP, rtps_writer->getGuid().entityId);
 
     auto* writer = &publications_writer_;
 
 #if HAVE_SECURITY
-    if (W->getAttributes().security_attributes().is_discovery_protected)
+    if (rtps_writer->getAttributes().security_attributes().is_discovery_protected)
     {
         writer = &publications_secure_writer_;
     }
@@ -654,7 +654,7 @@ bool EDPSimple::removeLocalWriter(
     if (writer->first != nullptr)
     {
         InstanceHandle_t iH;
-        iH = W->getGuid();
+        iH = rtps_writer->getGuid();
         CacheChange_t* change = EDPUtils::create_change(*writer, NOT_ALIVE_DISPOSED_UNREGISTERED, iH,
                         mp_PDP->builtin_attributes().writerPayloadSize);
         if (change != nullptr)
@@ -680,22 +680,22 @@ bool EDPSimple::removeLocalWriter(
     // notify monitor service about the new local entity proxy update
     if (nullptr != this->mp_PDP->get_proxy_observer())
     {
-        this->mp_PDP->get_proxy_observer()->on_local_entity_change(W->getGuid(), false);
+        this->mp_PDP->get_proxy_observer()->on_local_entity_change(rtps_writer->getGuid(), false);
     }
 #endif //FASTDDS_STATISTICS
 
-    return mp_PDP->removeWriterProxyData(W->getGuid());
+    return mp_PDP->removeWriterProxyData(rtps_writer->getGuid());
 }
 
-bool EDPSimple::removeLocalReader(
-        RTPSReader* R)
+bool EDPSimple::remove_reader(
+        RTPSReader* rtps_reader)
 {
-    EPROSIMA_LOG_INFO(RTPS_EDP, R->getGuid().entityId);
+    EPROSIMA_LOG_INFO(RTPS_EDP, rtps_reader->getGuid().entityId);
 
     auto* writer = &subscriptions_writer_;
 
 #if HAVE_SECURITY
-    if (R->getAttributes().security_attributes().is_discovery_protected)
+    if (rtps_reader->getAttributes().security_attributes().is_discovery_protected)
     {
         writer = &subscriptions_secure_writer_;
     }
@@ -704,7 +704,7 @@ bool EDPSimple::removeLocalReader(
     if (writer->first != nullptr)
     {
         InstanceHandle_t iH;
-        iH = (R->getGuid());
+        iH = (rtps_reader->getGuid());
         CacheChange_t* change = EDPUtils::create_change(*writer, NOT_ALIVE_DISPOSED_UNREGISTERED, iH,
                         mp_PDP->builtin_attributes().writerPayloadSize);
         if (change != nullptr)
@@ -729,11 +729,11 @@ bool EDPSimple::removeLocalReader(
     // notify monitor service about the new local entity proxy update
     if (nullptr != this->mp_PDP->get_proxy_observer())
     {
-        this->mp_PDP->get_proxy_observer()->on_local_entity_change(R->getGuid(), false);
+        this->mp_PDP->get_proxy_observer()->on_local_entity_change(rtps_reader->getGuid(), false);
     }
 #endif //FASTDDS_STATISTICS
 
-    return mp_PDP->removeReaderProxyData(R->getGuid());
+    return mp_PDP->removeReaderProxyData(rtps_reader->getGuid());
 }
 
 void EDPSimple::assignRemoteEndpoints(
@@ -744,7 +744,7 @@ void EDPSimple::assignRemoteEndpoints(
     const NetworkFactory& network = mp_RTPSParticipant->network_factory();
     uint32_t endp = pdata.m_availableBuiltinEndpoints;
     uint32_t auxendp;
-    bool use_multicast_locators = !mp_PDP->getRTPSParticipant()->getAttributes().builtin.avoid_builtin_multicast ||
+    bool use_multicast_locators = !mp_PDP->getRTPSParticipant()->get_attributes().builtin.avoid_builtin_multicast ||
             pdata.metatraffic_locators.unicast.empty();
 
     auto temp_reader_proxy_data = get_temporary_reader_proxies_pool().get();

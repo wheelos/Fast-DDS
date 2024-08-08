@@ -32,6 +32,7 @@
 #if _MSC_VER
 #include <Windows.h>
 #endif // _MSC_VER
+#include <fastdds/dds/builtin/topic/ParticipantBuiltinTopicData.hpp>
 #include <fastdds/dds/common/InstanceHandle.hpp>
 #include <fastdds/dds/core/condition/GuardCondition.hpp>
 #include <fastdds/dds/core/condition/StatusCondition.hpp>
@@ -80,7 +81,8 @@ class PubSubWriter
 
         void on_participant_discovery(
                 eprosima::fastdds::dds::DomainParticipant*,
-                eprosima::fastdds::rtps::ParticipantDiscoveryInfo&& info,
+                eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
+                const eprosima::fastdds::dds::ParticipantBuiltinTopicData& info,
                 bool& should_be_ignored) override
         {
             static_cast<void>(should_be_ignored);
@@ -89,12 +91,12 @@ class PubSubWriter
                 writer_.discovery_result_ = writer_.onDiscovery_(info);
             }
 
-            if (info.status == eprosima::fastdds::rtps::ParticipantDiscoveryInfo::DISCOVERED_PARTICIPANT)
+            if (status == eprosima::fastdds::rtps::ParticipantDiscoveryStatus::DISCOVERED_PARTICIPANT)
             {
                 writer_.participant_matched();
             }
-            else if (info.status == eprosima::fastdds::rtps::ParticipantDiscoveryInfo::REMOVED_PARTICIPANT ||
-                    info.status == eprosima::fastdds::rtps::ParticipantDiscoveryInfo::DROPPED_PARTICIPANT)
+            else if (status == eprosima::fastdds::rtps::ParticipantDiscoveryStatus::REMOVED_PARTICIPANT ||
+                    status == eprosima::fastdds::rtps::ParticipantDiscoveryStatus::DROPPED_PARTICIPANT)
             {
                 writer_.participant_unmatched();
             }
@@ -780,8 +782,8 @@ public:
         auto nsecs = std::chrono::duration_cast<std::chrono::nanoseconds>(max_wait);
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(nsecs);
         nsecs -= secs;
-        eprosima::fastdds::Duration_t timeout {static_cast<int32_t>(secs.count()),
-                                               static_cast<uint32_t>(nsecs.count())};
+        eprosima::fastdds::dds::Duration_t timeout {static_cast<int32_t>(secs.count()),
+                                                    static_cast<uint32_t>(nsecs.count())};
         return (eprosima::fastdds::dds::RETCODE_OK ==
                datawriter_->wait_for_acknowledgments(timeout));
     }
@@ -797,8 +799,8 @@ public:
         auto nsecs = std::chrono::duration_cast<std::chrono::nanoseconds>(max_wait);
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(nsecs);
         nsecs -= secs;
-        eprosima::fastdds::Duration_t timeout {static_cast<int32_t>(secs.count()),
-                                               static_cast<uint32_t>(nsecs.count())};
+        eprosima::fastdds::dds::Duration_t timeout {static_cast<int32_t>(secs.count()),
+                                                    static_cast<uint32_t>(nsecs.count())};
         return (eprosima::fastdds::dds::RETCODE_OK ==
                datawriter_->wait_for_acknowledgments(data, instance_handle, timeout));
     }
@@ -870,7 +872,7 @@ public:
     }
 
     PubSubWriter& deadline_period(
-            const eprosima::fastdds::Duration_t deadline_period)
+            const eprosima::fastdds::dds::Duration_t deadline_period)
     {
         datawriter_qos_.deadline().period = deadline_period;
         return *this;
@@ -884,40 +886,40 @@ public:
     }
 
     PubSubWriter& liveliness_lease_duration(
-            const eprosima::fastdds::Duration_t lease_duration)
+            const eprosima::fastdds::dds::Duration_t lease_duration)
     {
         datawriter_qos_.liveliness().lease_duration = lease_duration;
         return *this;
     }
 
     PubSubWriter& latency_budget_duration(
-            const eprosima::fastdds::Duration_t& latency_duration)
+            const eprosima::fastdds::dds::Duration_t& latency_duration)
     {
         datawriter_qos_.latency_budget().duration = latency_duration;
         return *this;
     }
 
-    eprosima::fastdds::Duration_t get_latency_budget_duration()
+    eprosima::fastdds::dds::Duration_t get_latency_budget_duration()
     {
         return datawriter_qos_.latency_budget().duration;
     }
 
     PubSubWriter& liveliness_announcement_period(
-            const eprosima::fastdds::Duration_t announcement_period)
+            const eprosima::fastdds::dds::Duration_t announcement_period)
     {
         datawriter_qos_.liveliness().announcement_period = announcement_period;
         return *this;
     }
 
     PubSubWriter& lifespan_period(
-            const eprosima::fastdds::Duration_t lifespan_period)
+            const eprosima::fastdds::dds::Duration_t lifespan_period)
     {
         datawriter_qos_.lifespan().duration = lifespan_period;
         return *this;
     }
 
     PubSubWriter& keep_duration(
-            const eprosima::fastdds::Duration_t duration)
+            const eprosima::fastdds::dds::Duration_t duration)
     {
         datawriter_qos_.reliable_writer_qos().disable_positive_acks.enabled = true;
         datawriter_qos_.reliable_writer_qos().disable_positive_acks.duration = duration;
@@ -932,7 +934,7 @@ public:
     }
 
     PubSubWriter& max_blocking_time(
-            const eprosima::fastdds::Duration_t time)
+            const eprosima::fastdds::dds::Duration_t time)
     {
         datawriter_qos_.reliability().max_blocking_time = time;
         return *this;
@@ -1445,8 +1447,8 @@ public:
     }
 
     PubSubWriter& lease_duration(
-            eprosima::fastdds::Duration_t lease_duration,
-            eprosima::fastdds::Duration_t announce_period)
+            eprosima::fastdds::dds::Duration_t lease_duration,
+            eprosima::fastdds::dds::Duration_t announce_period)
     {
         participant_qos_.wire_protocol().builtin.discovery_config.leaseDuration = lease_duration;
         participant_qos_.wire_protocol().builtin.discovery_config.leaseDuration_announcementperiod = announce_period;
@@ -1455,7 +1457,7 @@ public:
 
     PubSubWriter& initial_announcements(
             uint32_t count,
-            const eprosima::fastdds::Duration_t& period)
+            const eprosima::fastdds::dds::Duration_t& period)
     {
         participant_qos_.wire_protocol().builtin.discovery_config.initial_announcements.count = count;
         participant_qos_.wire_protocol().builtin.discovery_config.initial_announcements.period = period;
@@ -1483,7 +1485,7 @@ public:
                 if (profile->getType() == eprosima::fastdds::xmlparser::NodeType::PUBLISHER)
                 {
                     datawriter_qos_ =
-         *(dynamic_cast<eprosima::fastdds::xmlparser::DataNode<eprosima::fastdds::PublisherAttributes>
+         *(dynamic_cast<eprosima::fastdds::xmlparser::DataNode<eprosima::fastdds::xmlparser::PublisherAttributes>
          *>(
                                 profile.get())->get());
                 }
@@ -2018,7 +2020,7 @@ protected:
     std::string participant_profile_ = "";
     std::string datawriter_profile_ = "";
 
-    std::function<bool(const eprosima::fastdds::rtps::ParticipantDiscoveryInfo& info)> onDiscovery_;
+    std::function<bool(const eprosima::fastdds::dds::ParticipantBuiltinTopicData& info)> onDiscovery_;
 
     //! A mutex for liveliness
     std::mutex liveliness_mutex_;
@@ -2071,7 +2073,7 @@ protected:
         }
 
         void start(
-                const eprosima::fastdds::Duration_t& timeout)
+                const eprosima::fastdds::dds::Duration_t& timeout)
         {
             waitset_.attach_condition(writer_.datawriter_->get_statuscondition());
             waitset_.attach_condition(guard_condition_);
@@ -2214,7 +2216,7 @@ protected:
         unsigned int times_liveliness_lost_ = 0;
 
         //! The timeout for the wait operation
-        eprosima::fastdds::Duration_t timeout_;
+        eprosima::fastdds::dds::Duration_t timeout_;
     }
     waitset_thread_;
 
@@ -2226,7 +2228,7 @@ public:
             const std::string& topic_name)
         : PubSubWriter<TypeSupport>(topic_name)
         , waitset_thread_(*this)
-        , timeout_(eprosima::fastdds::c_TimeInfinite)
+        , timeout_(eprosima::fastdds::dds::c_TimeInfinite)
         , times_waitset_timeout_(0)
     {
     }
@@ -2313,7 +2315,7 @@ public:
     }
 
     PubSubWriterWithWaitsets& waitset_timeout(
-            const eprosima::fastdds::Duration_t& timeout)
+            const eprosima::fastdds::dds::Duration_t& timeout)
     {
         timeout_ = timeout;
         return *this;
@@ -2329,7 +2331,7 @@ protected:
     }
 
     //! The timeout for the waitset
-    eprosima::fastdds::Duration_t timeout_;
+    eprosima::fastdds::dds::Duration_t timeout_;
 
     //! A mutex for waitset timeout
     std::mutex waitset_timeout_mutex_;

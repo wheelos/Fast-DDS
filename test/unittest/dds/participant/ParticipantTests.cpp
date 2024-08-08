@@ -856,7 +856,7 @@ void get_rtps_attributes(
     ASSERT_NE(nullptr, participant_test);
     const DomainParticipantImpl* participant_impl = participant_test->get_impl();
     ASSERT_NE(nullptr, participant_impl);
-    att = participant_impl->get_rtps_participant()->getRTPSParticipantAttributes();
+    att = participant_impl->get_rtps_participant()->get_attributes();
 }
 
 void helper_wait_for_at_least_entries(
@@ -2535,10 +2535,12 @@ public:
 
     void on_participant_discovery(
             eprosima::fastdds::dds::DomainParticipant*,
-            eprosima::fastdds::rtps::ParticipantDiscoveryInfo&&,
+            eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
+            const ParticipantBuiltinTopicData&,
             bool& should_be_ignored) override
     {
         static_cast<void>(should_be_ignored);
+        static_cast<void>(status);
         try
         {
             promise_.set_value();
@@ -2836,7 +2838,7 @@ TEST(ParticipantTests, GetCurrentTime)
             DomainParticipantFactory::get_instance()->create_participant(
         (uint32_t)GET_PID() % 230, PARTICIPANT_QOS_DEFAULT);
 
-    eprosima::fastdds::Time_t now;
+    eprosima::fastdds::dds::Time_t now;
     ASSERT_EQ(participant->get_current_time(now), RETCODE_OK);
     ASSERT_EQ(DomainParticipantFactory::get_instance()->delete_participant(participant), RETCODE_OK);
 }
@@ -3334,7 +3336,7 @@ TEST(ParticipantTests, DeleteContainedEntities)
     // Reader with active loans. Fail and keep everything as is
 
     EXPECT_EQ(RETCODE_OK, data_writer_bar->write(&data, HANDLE_NIL));
-    Duration_t wait_time(1, 0);
+    dds::Duration_t wait_time(1, 0);
     EXPECT_TRUE(data_reader_bar->wait_for_unread_message(wait_time));
 
     ASSERT_EQ(data_reader_bar->take(mock_coll, mock_seq), RETCODE_OK);
@@ -3658,7 +3660,7 @@ TEST(ParticipantTests, UnsupportedMethods)
 
     // Discovery methods
     std::vector<InstanceHandle_t> handle_vector({InstanceHandle_t()});
-    builtin::ParticipantBuiltinTopicData pbtd;
+    ParticipantBuiltinTopicData pbtd;
     builtin::TopicBuiltinTopicData tbtd;
 
     ASSERT_EQ(participant->get_discovered_participants(handle_vector), RETCODE_UNSUPPORTED);

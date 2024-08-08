@@ -209,7 +209,7 @@ void StatefulWriter::init(
         RTPSParticipantImpl* pimpl,
         const WriterAttributes& att)
 {
-    const RTPSParticipantAttributes& part_att = pimpl->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& part_att = pimpl->get_attributes();
 
     auto push_mode = PropertyPolicyHelper::find_property(att.endpoint.properties, "fastdds.push_mode");
     push_mode_ = !((nullptr != push_mode) && ("false" == *push_mode));
@@ -329,7 +329,7 @@ void StatefulWriter::unsent_change_added_to_history(
     std::lock_guard<RecursiveTimedMutex> guard(mp_mutex);
     auto payload_length = change->serializedPayload.length;
 
-    if (liveliness_lease_duration_ < c_TimeInfinite)
+    if (liveliness_lease_duration_ < dds::c_TimeInfinite)
     {
         mp_RTPSParticipant->wlp()->assert_liveliness(
             getGuid(),
@@ -1018,7 +1018,7 @@ bool StatefulWriter::matched_reader_add_edp(
         size_t max_readers = matched_readers_pool_.max_size();
         if (get_matched_readers_size() + matched_readers_pool_.size() < max_readers)
         {
-            const RTPSParticipantAttributes& part_att = mp_RTPSParticipant->getRTPSParticipantAttributes();
+            const RTPSParticipantAttributes& part_att = mp_RTPSParticipant->get_attributes();
             rp = new ReaderProxy(times_, part_att.allocation.locators, this);
         }
         else
@@ -1381,7 +1381,7 @@ bool StatefulWriter::all_readers_updated()
 }
 
 bool StatefulWriter::wait_for_all_acked(
-        const Duration_t& max_wait)
+        const dds::Duration_t& max_wait)
 {
     std::unique_lock<RecursiveTimedMutex> lock(mp_mutex);
     std::unique_lock<std::mutex> all_acked_lock(all_acked_mutex_);

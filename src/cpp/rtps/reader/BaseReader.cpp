@@ -128,7 +128,7 @@ BaseReader::~BaseReader()
 bool BaseReader::matched_writer_add(
         const PublicationBuiltinTopicData& info)
 {
-    const auto& alloc = mp_RTPSParticipant->getRTPSParticipantAttributes().allocation;
+    const auto& alloc = mp_RTPSParticipant->get_attributes().allocation;
     WriterProxyData wdata(
         alloc.locators.max_unicast_locators,
         alloc.locators.max_multicast_locators,
@@ -207,7 +207,7 @@ uint64_t BaseReader::get_unread_count(
 }
 
 bool BaseReader::wait_for_unread_cache(
-        const eprosima::fastdds::Duration_t& timeout)
+        const eprosima::fastdds::dds::Duration_t& timeout)
 {
     auto time_out = std::chrono::steady_clock::now() + std::chrono::seconds(timeout.seconds) +
             std::chrono::nanoseconds(timeout.nanosec);

@@ -37,17 +37,25 @@ namespace rtps {
 /// Structure PublicationBuiltinTopicData, contains the information on a discovered publication.
 struct PublicationBuiltinTopicData
 {
+    PublicationBuiltinTopicData()
+    {
+        reliability.kind = dds::RELIABLE_RELIABILITY_QOS;
+    }
+
     /// Builtin topic Key
-    BuiltinTopicKey_t key;
+    BuiltinTopicKey_t key{{0, 0, 0}};
 
     /// Builtin participant topic Key
-    BuiltinTopicKey_t participant_key;
+    BuiltinTopicKey_t participant_key{{0, 0, 0}};
 
     /// Topic name
     fastcdr::string_255 topic_name;
 
     /// Type name
     fastcdr::string_255 type_name;
+
+    /// Topic kind
+    TopicKind_t topic_kind = TopicKind_t::NO_KEY;
 
     // DataWriter Qos
 
@@ -130,7 +138,7 @@ struct PublicationBuiltinTopicData
     uint32_t max_serialized_size = 0;
 
     /// Network configuration
-    NetworkConfigSet_t loopback_transformation;
+    NetworkConfigSet_t loopback_transformation{};
 
 };
 

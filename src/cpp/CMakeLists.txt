@@ -54,6 +54,7 @@ set(${PROJECT_NAME}_source_files
     fastdds/core/Entity.cpp
     fastdds/core/policy/ParameterList.cpp
     fastdds/core/policy/QosPolicyUtils.cpp
+    fastdds/core/Time_t.cpp
     fastdds/domain/DomainParticipant.cpp
     fastdds/domain/DomainParticipantFactory.cpp
     fastdds/domain/DomainParticipantImpl.cpp
@@ -89,6 +90,7 @@ set(${PROJECT_NAME}_source_files
     fastdds/topic/TopicProxyFactory.cpp
     fastdds/topic/TypeSupport.cpp
     fastdds/utils/QosConverters.cpp
+    fastdds/utils/TypePropagation.cpp
     fastdds/xtypes/dynamic_types/AnnotationDescriptorImpl.cpp
     fastdds/xtypes/dynamic_types/DynamicDataFactory.cpp
     fastdds/xtypes/dynamic_types/DynamicDataImpl.cpp
@@ -114,7 +116,6 @@ set(${PROJECT_NAME}_source_files
     rtps/attributes/RTPSParticipantAttributes.cpp
     rtps/attributes/ServerAttributes.cpp
     rtps/attributes/ThreadSettings.cpp
-    rtps/attributes/TopicAttributes.cpp
     rtps/builtin/BuiltinProtocols.cpp
     rtps/builtin/data/ParticipantProxyData.cpp
     rtps/builtin/data/ProxyDataConverters.cpp
@@ -235,6 +236,7 @@ set(${PROJECT_NAME}_source_files
     utils/SystemInfo.cpp
     utils/TimedConditionVariable.cpp
     utils/UnitsParser.cpp
+    xmlparser/attributes/TopicAttributes.cpp
     xmlparser/XMLDynamicParser.cpp
     xmlparser/XMLElementParser.cpp
     xmlparser/XMLEndpointParser.cpp

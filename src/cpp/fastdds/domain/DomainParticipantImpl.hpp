@@ -25,6 +25,7 @@
 #include <condition_variable>
 #include <mutex>
 
+#include <fastdds/dds/builtin/topic/ParticipantBuiltinTopicData.hpp>
 #include <fastdds/dds/core/ReturnCode.hpp>
 #include <fastdds/dds/core/status/StatusMask.hpp>
 #include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
@@ -248,7 +249,7 @@ public:
      */
     Topic* find_topic(
             const std::string& topic_name,
-            const fastdds::Duration_t& timeout);
+            const fastdds::dds::Duration_t& timeout);
 
     /**
      * Implementation of Topic::set_listener that propagates the listener and mask to all the TopicProxy
@@ -431,7 +432,7 @@ public:
             bool recursive = true) const;
 
     ReturnCode_t get_current_time(
-            fastdds::Time_t& current_time) const;
+            fastdds::dds::Time_t& current_time) const;
 
     const DomainParticipant* get_participant() const
     {
@@ -506,6 +507,18 @@ public:
     {
         return id_counter_;
     }
+
+    /**
+     * @brief Fill a TypeInformationParameter with the type information of a TypeSupport.
+     *
+     * @param type              TypeSupport to get the type information from.
+     * @param type_information  TypeInformationParameter to fill.
+     *
+     * @return true if the constraints for propagating the type information are met.
+     */
+    bool fill_type_information(
+            const TypeSupport& type,
+            xtypes::TypeInformationParameter& type_information);
 
 protected:
 
@@ -634,9 +647,10 @@ protected:
             assert(!(callback_counter_ > 0));
         }
 
-        void onParticipantDiscovery(
+        void on_participant_discovery(
                 fastdds::rtps::RTPSParticipant* participant,
-                fastdds::rtps::ParticipantDiscoveryInfo&& info,
+                fastdds::rtps::ParticipantDiscoveryStatus reason,
+                const ParticipantBuiltinTopicData& info,
                 bool& should_be_ignored) override;
 
 #if HAVE_SECURITY

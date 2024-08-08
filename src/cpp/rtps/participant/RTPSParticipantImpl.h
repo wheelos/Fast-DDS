@@ -40,6 +40,7 @@
 #include <fastdds/rtps/attributes/RTPSParticipantAttributes.hpp>
 #include <fastdds/rtps/builtin/data/ContentFilterProperty.hpp>
 #include <fastdds/rtps/builtin/data/SubscriptionBuiltinTopicData.hpp>
+#include <fastdds/rtps/builtin/data/ParticipantBuiltinTopicData.hpp>
 #include <fastdds/rtps/common/Guid.hpp>
 #include <fastdds/rtps/common/LocatorList.hpp>
 #include <fastdds/rtps/history/IChangePool.hpp>
@@ -47,12 +48,13 @@
 #include <fastdds/rtps/transport/SenderResource.hpp>
 
 #include "../flowcontrol/FlowControllerFactory.hpp"
+#include <fastdds/utils/TypePropagation.hpp>
 #include <rtps/builtin/data/ReaderProxyData.hpp>
 #include <rtps/builtin/data/WriterProxyData.hpp>
 #include <rtps/messages/MessageReceiver.h>
 #include <rtps/messages/RTPSMessageGroup_t.hpp>
 #include <rtps/messages/SendBuffersManager.hpp>
-#include <rtps/network/NetworkFactory.h>
+#include <rtps/network/NetworkFactory.hpp>
 #include <rtps/network/ReceiverResource.h>
 #include <rtps/resources/ResourceEvent.h>
 #include <statistics/rtps/monitor-service/interfaces/IConnectionsObserver.hpp>
@@ -60,7 +62,6 @@
 #include <statistics/rtps/StatisticsBase.hpp>
 #include <statistics/types/monitorservice_types.hpp>
 #include <utils/shared_mutex.hpp>
-#include <utils/Semaphore.hpp>
 
 #if HAVE_SECURITY
 #include <fastdds/rtps/Endpoint.hpp>
@@ -107,12 +108,12 @@ class TypeLookupManager;
 
 namespace fastdds {
 
-class TopicAttributes;
 class MessageReceiver;
 
 namespace rtps {
 
 struct PublicationBuiltinTopicData;
+struct TopicDescription;
 class RTPSParticipant;
 class RTPSParticipantListener;
 class BuiltinProtocols;
@@ -340,19 +341,13 @@ public:
         return ret_code;
     }
 
-    //!Get the participant Mutex
-    std::recursive_mutex* getParticipantMutex() const
-    {
-        return mp_mutex;
-    }
-
     /**
      * Get the participant listener
      * @return participant listener
      */
     inline RTPSParticipantListener* getListener()
     {
-        std::lock_guard<std::recursive_mutex> _(*getParticipantMutex());
+        std::lock_guard<std::mutex> _(mutex_);
         return mp_participantListener;
     }
 
@@ -363,7 +358,7 @@ public:
     void set_listener(
             RTPSParticipantListener* listener)
     {
-        std::lock_guard<std::recursive_mutex> _(*getParticipantMutex());
+        std::lock_guard<std::mutex> _(mutex_);
         mp_participantListener = listener;
     }
 
@@ -648,9 +643,24 @@ private:
      * @param kind Endpoint Kind.
      * @return True if exists.
      */
-    bool existsEntityId(
+    bool entity_id_exists(
             const EntityId_t& ent,
             EndpointKind_t kind) const;
+
+    /**
+     * Method to check if the EntityId conditions are coherent with the endpoint:
+     * - Checks if it already exists in this RTPSParticipant.
+     * - It is consistent with the topic kind of the endpoint.
+     *
+     * @param entity_id EntityId to check
+     * @param endpoint_kind Endpoint Kind.
+     * @param topic_kind Topic kind.
+     * @return True if the EntityId conditions are correct.
+     */
+    bool check_entity_id_conditions(
+            const EntityId_t& entity_id,
+            EndpointKind_t endpoint_kind,
+            TopicKind_t topic_kind) const;
 
     /**
      * Assign an endpoint to the ReceiverResources, based on its LocatorLists.
@@ -712,8 +722,8 @@ private:
     void normalize_endpoint_locators(
             EndpointAttributes& endpoint_att);
 
-    //!Participant Mutex
-    std::recursive_mutex* mp_mutex;
+    //! Participant Mutex
+    mutable std::mutex mutex_;
 
     //!Will this participant use intraprocess only?
     bool is_intraprocess_only_;
@@ -785,14 +795,24 @@ private:
             const Functor& callback);
 
     /**
-     * Get default metatraffic locators when not provided by the user.
+     * @brief Fill the default metatraffic locators.
+     *
+     * @param [in] att @ref RTPSParticipantAttributes in which the locators are filled.
+     *
+     * @note This function in meant to be used iff the locators are not provided by the user.
      */
-    void get_default_metatraffic_locators();
+    void get_default_metatraffic_locators(
+            RTPSParticipantAttributes& att);
 
     /**
-     * Get default unicast locators when not provided by the user.
+     * @brief Fill the default unicast locators.
+     *
+     * @param [in] att @ref RTPSParticipantAttributes in which the locators are filled.
+     *
+     * @note This function in meant to be used iff the locators are not provided by the user.
      */
-    void get_default_unicast_locators();
+    void get_default_unicast_locators(
+            RTPSParticipantAttributes& att);
 
     bool match_local_endpoints_ = true;
 
@@ -801,10 +821,7 @@ private:
 
 public:
 
-    const RTPSParticipantAttributes& getRTPSParticipantAttributes() const
-    {
-        return this->m_att;
-    }
+    const RTPSParticipantAttributes& get_attributes() const;
 
     /**
      * Create a Writer in this RTPSParticipant.
@@ -894,71 +911,62 @@ public:
 
     /**
      * Register a Writer in the BuiltinProtocols.
-     * @param Writer Pointer to the RTPSWriter.
-     * @param topicAtt TopicAttributes of the Writer.
-     * @param wqos WriterQos.
+     *
+     * @param Writer  Pointer to the RTPSWriter.
+     * @param topic   Information regarding the topic where the writer is registering.
+     * @param qos     Qos policies of the writer.
+     *
      * @return True if correctly registered.
      */
-    bool registerWriter(
+    bool register_writer(
             RTPSWriter* Writer,
-            const TopicAttributes& topicAtt,
-            const fastdds::dds::WriterQos& wqos);
+            const TopicDescription& topic,
+            const fastdds::dds::WriterQos& qos);
 
     /**
      * Register a Reader in the BuiltinProtocols.
+     *
      * @param Reader          Pointer to the RTPSReader.
-     * @param topicAtt        TopicAttributes of the Reader.
-     * @param rqos            ReaderQos.
+     * @param topic           Information regarding the topic where the reader is registering.
+     * @param qos             Qos policies of the reader.
      * @param content_filter  Optional content filtering information.
+     *
      * @return True if correctly registered.
      */
-    bool registerReader(
+    bool register_reader(
             RTPSReader* Reader,
-            const TopicAttributes& topicAtt,
-            const fastdds::dds::ReaderQos& rqos,
+            const TopicDescription& topic,
+            const fastdds::dds::ReaderQos& qos,
             const ContentFilterProperty* content_filter = nullptr);
 
     /**
      * Update participant attributes.
      * @param patt New participant attributes.
-     * @return True on success, false otherwise.
      */
     void update_attributes(
             const RTPSParticipantAttributes& patt);
 
     /**
      * Update local writer QoS
-     * @param Writer Writer to update
-     * @param wqos New QoS for the writer
+     * @param rtps_writer Writer to update.
+     * @param wqos        New QoS for the writer.
      * @return True on success
      */
-    bool updateLocalWriter(
-            RTPSWriter* Writer,
-            const TopicAttributes& topicAtt,
+    bool update_writer(
+            RTPSWriter* rtps_writer,
             const fastdds::dds::WriterQos& wqos);
 
     /**
      * Update local reader QoS
-     * @param Reader          Reader to update
-     * @param topicAtt        TopicAttributes of the Reader.
-     * @param rqos            New QoS for the reader
-     * @param content_filter  Optional content filtering information.
+     * @param rtps_reader      Reader to update.
+     * @param rqos             New QoS for the reader.
+     * @param content_filter   Optional content filtering information.
      * @return True on success
      */
-    bool updateLocalReader(
-            RTPSReader* Reader,
-            const TopicAttributes& topicAtt,
+    bool update_reader(
+            RTPSReader* rtps_reader,
             const fastdds::dds::ReaderQos& rqos,
             const ContentFilterProperty* content_filter = nullptr);
-
-    /**
-     * Get the participant attributes
-     * @return Participant attributes
-     */
-    inline RTPSParticipantAttributes& getAttributes()
-    {
-        return m_att;
-    }
 
     /**
      * Delete a user endpoint
@@ -1219,7 +1227,7 @@ public:
     bool disable_monitor_service() const;
 
     /**
-     * fills in the ParticipantProxyData from a MonitorService Message
+     * fills in the ParticipantBuiltinTopicData from a MonitorService Message
      *
      * @param [out] data Proxy to fill
      * @param [in] msg MonitorService Message to get the proxy information from.
@@ -1227,8 +1235,8 @@ public:
      * @return true if the operation succeeds.
      */
     bool fill_discovery_data_from_cdr_message(
-            ParticipantProxyData& data,
-            fastdds::statistics::MonitorServiceStatusData& msg);
+            ParticipantBuiltinTopicData& data,
+            const fastdds::statistics::MonitorServiceStatusData& msg);
 
     /**
      * fills in the PublicationBuiltinTopicData from a MonitorService Message
@@ -1285,6 +1293,13 @@ public:
      */
     void update_removed_participant(
             const LocatorList_t& remote_participant_locators);
+
+    /**
+     * @brief Get participant's @ref dds::utils::TypePropagation
+     *
+     * @return This participant's @ref dds::utils::TypePropagation
+     */
+    dds::utils::TypePropagation type_propagation() const;
 
 };
 } // namespace rtps

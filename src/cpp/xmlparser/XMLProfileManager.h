@@ -27,6 +27,7 @@
 #include <xmlparser/attributes/ParticipantAttributes.hpp>
 #include <xmlparser/attributes/PublisherAttributes.hpp>
 #include <xmlparser/attributes/SubscriberAttributes.hpp>
+#include <xmlparser/attributes/TopicAttributes.hpp>
 #include <xmlparser/XMLParser.h>
 #include <xmlparser/XMLParserCommon.h>
 
@@ -144,12 +145,12 @@ public:
      */
     static XMLP_ret fillParticipantAttributes(
             const std::string& profile_name,
-            fastdds::ParticipantAttributes& atts,
+            fastdds::xmlparser::ParticipantAttributes& atts,
             bool log_error = true);
 
     //!Fills participant_attributes with the default values.
     static void getDefaultParticipantAttributes(
-            fastdds::ParticipantAttributes& participant_attributes);
+            fastdds::xmlparser::ParticipantAttributes& participant_attributes);
 
     /**
      * Search for the profile specified and fill the structure.
@@ -179,12 +180,12 @@ public:
      */
     static XMLP_ret fillPublisherAttributes(
             const std::string& profile_name,
-            fastdds::PublisherAttributes& atts,
+            fastdds::xmlparser::PublisherAttributes& atts,
             bool log_error = true);
 
     //!Fills publisher_attributes with the default values.
     static void getDefaultPublisherAttributes(
-            fastdds::PublisherAttributes& publisher_attributes);
+            fastdds::xmlparser::PublisherAttributes& publisher_attributes);
 
     /**
      * Search for the profile specified and fill the structure.
@@ -195,12 +196,12 @@ public:
      */
     static XMLP_ret fillSubscriberAttributes(
             const std::string& profile_name,
-            fastdds::SubscriberAttributes& atts,
+            fastdds::xmlparser::SubscriberAttributes& atts,
             bool log_error = true);
 
     //!Fills subscriber_attributes with the default values.
     static void getDefaultSubscriberAttributes(
-            fastdds::SubscriberAttributes& subscriber_attributes);
+            fastdds::xmlparser::SubscriberAttributes& subscriber_attributes);
 
     //!Add a new transport instance along with its id.
     static bool insertTransportById(
@@ -242,7 +243,7 @@ public:
      */
     static XMLP_ret fillRequesterAttributes(
             const std::string& profile_name,
-            fastdds::RequesterAttributes& atts);
+            fastdds::xmlparser::RequesterAttributes& atts);
 
     /**
      * Search for the profile specified and fill the structure.
@@ -252,7 +253,7 @@ public:
      */
     static XMLP_ret fillReplierAttributes(
             const std::string& profile_name,
-            fastdds::ReplierAttributes& atts);
+            fastdds::xmlparser::ReplierAttributes& atts);
 
     /**
      * Deletes the XMLProfileManager instance.

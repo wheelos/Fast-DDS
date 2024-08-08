@@ -31,8 +31,8 @@
 #include <fastdds/rtps/attributes/HistoryAttributes.hpp>
 #include <fastdds/rtps/attributes/ReaderAttributes.hpp>
 #include <fastdds/rtps/attributes/RTPSParticipantAttributes.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
 #include <fastdds/rtps/attributes/WriterAttributes.hpp>
+#include <fastdds/rtps/builtin/data/TopicDescription.hpp>
 #include <fastdds/rtps/common/Time_t.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
@@ -352,17 +352,16 @@ public:
     }
 
     void match_endpoints(
-            bool key,
+            bool /* key */,
             fastcdr::string_255 data_type,
             fastcdr::string_255 topic_name)
     {
         using namespace fastdds;
         using namespace fastdds::rtps;
 
-        TopicAttributes Tatt;
-        Tatt.topicKind = key ? TopicKind_t::WITH_KEY : TopicKind_t::NO_KEY;
-        Tatt.topicDataType = data_type;
-        Tatt.topicName = topic_name;
+        TopicDescription topic_desc;
+        topic_desc.type_name = data_type;
+        topic_desc.topic_name = topic_name;
 
         dds::WriterQos Wqos;
         auto& watt = writer_->getAttributes();
@@ -378,8 +377,8 @@ public:
                 RELIABLE ==
                 ratt.reliabilityKind ? dds::RELIABLE_RELIABILITY_QOS : dds::BEST_EFFORT_RELIABILITY_QOS;
 
-        participant_->registerWriter(writer_, Tatt, Wqos);
-        participant_->registerReader(reader_, Tatt, Rqos);
+        participant_->register_writer(writer_, topic_desc, Wqos);
+        participant_->register_reader(reader_, topic_desc, Rqos);
     }
 
     void destroy_endpoints()
@@ -699,14 +698,14 @@ TEST_F(RTPSStatisticsTests, statistics_rpts_listener_callbacks)
                 write_small_sample(length);
 
                 // wait for reception
-                EXPECT_TRUE(reader_->wait_for_unread_cache(Duration_t(5, 0)));
+                EXPECT_TRUE(reader_->wait_for_unread_cache(dds::Duration_t(5, 0)));
 
                 // receive the sample
                 CacheChange_t* reader_change = reader_->next_untaken_cache();
                 ASSERT_NE(nullptr, reader_change);
 
                 // wait for acknowledgement
-                EXPECT_TRUE(writer_->wait_for_all_acked(Duration_t(5, 0)));
+                EXPECT_TRUE(writer_->wait_for_all_acked(dds::Duration_t(5, 0)));
 
                 EXPECT_TRUE(writer_->remove_statistics_listener(writer_listener));
                 EXPECT_TRUE(reader_->remove_statistics_listener(reader_listener));
@@ -825,14 +824,14 @@ TEST_F(RTPSStatisticsTests, statistics_rpts_listener_callbacks_fragmented)
     write_large_sample(length, fragment_size);
 
     // wait for reception
-    EXPECT_TRUE(reader_->wait_for_unread_cache(Duration_t(10, 0)));
+    EXPECT_TRUE(reader_->wait_for_unread_cache(dds::Duration_t(10, 0)));
 
     // receive the sample
     CacheChange_t* reader_change = reader_->next_untaken_cache();
     ASSERT_NE(nullptr, reader_change);
 
     // wait for acknowledgement
-    EXPECT_TRUE(writer_->wait_for_all_acked(Duration_t(1, 0)));
+    EXPECT_TRUE(writer_->wait_for_all_acked(dds::Duration_t(1, 0)));
 
     EXPECT_TRUE(participant_->remove_statistics_listener(participant_listener, mask));
 }
@@ -977,14 +976,14 @@ TEST_F(RTPSStatisticsTests, statistics_rpts_listener_callbacks_no_enabled_writer
     write_small_sample(length);
 
     // wait for reception
-    EXPECT_TRUE(reader_->wait_for_unread_cache(Duration_t(5, 0)));
+    EXPECT_TRUE(reader_->wait_for_unread_cache(dds::Duration_t(5, 0)));
 
     // receive the sample
     CacheChange_t* reader_change = reader_->next_untaken_cache();
     ASSERT_NE(nullptr, reader_change);
 
     // wait for acknowledgement
-    EXPECT_TRUE(writer_->wait_for_all_acked(Duration_t(5, 0)));
+    EXPECT_TRUE(writer_->wait_for_all_acked(dds::Duration_t(5, 0)));
 
     EXPECT_TRUE(writer_->remove_statistics_listener(writer_listener));
     EXPECT_TRUE(reader_->remove_statistics_listener(reader_listener));
@@ -1066,14 +1065,14 @@ TEST_F(RTPSStatisticsTests, statistics_rpts_listener_gap_callback)
     match_endpoints(false, "string", "statisticsSmallTopic");
 
     // wait for reception
-    EXPECT_TRUE(reader_->wait_for_unread_cache(Duration_t(5, 0)));
+    EXPECT_TRUE(reader_->wait_for_unread_cache(dds::Duration_t(5, 0)));
 
     // receive the second sample
     CacheChange_t* reader_change = reader_->next_untaken_cache();
     ASSERT_NE(nullptr, reader_change);
 
     // wait for acknowledgement
-    EXPECT_TRUE(writer_->wait_for_all_acked(Duration_t(1, 0)));
+    EXPECT_TRUE(writer_->wait_for_all_acked(dds::Duration_t(1, 0)));
 
     // release the listeners
     EXPECT_TRUE(writer_->remove_statistics_listener(writer_listener));

@@ -21,8 +21,8 @@
 
 #include <gmock/gmock.h>
 
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/BuiltinProtocols.h>
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/discovery/endpoint/EDP.h>
 #include <rtps/messages/CDRMessage.hpp>
 #include <utils/ProxyPool.hpp>
@@ -60,7 +60,7 @@ public:
 
     MOCK_METHOD0(createPDPEndpoints, bool());
 
-    MOCK_METHOD0(getEDP, EDP*());
+    MOCK_METHOD0(get_edp, EDP*());
 
 #ifdef FASTDDS_STATISTICS
     MOCK_METHOD0(get_proxy_observer, const fastdds::statistics::rtps::IProxyObserver*());

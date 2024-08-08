@@ -153,7 +153,7 @@ RTPSParticipant* RTPSDomainImpl::createParticipant(
 
     RTPSParticipantAttributes PParam = attrs;
 
-    if (PParam.builtin.discovery_config.leaseDuration < c_TimeInfinite &&
+    if (PParam.builtin.discovery_config.leaseDuration < dds::c_TimeInfinite &&
             PParam.builtin.discovery_config.leaseDuration <=
             PParam.builtin.discovery_config.leaseDuration_announcementperiod)
     {
@@ -818,25 +818,6 @@ bool RTPSDomainImpl::set_library_settings(
     }
     xmlparser::XMLProfileManager::library_settings(library_settings);
     return true;
-}
-
-bool RTPSDomain::get_topic_attributes_from_profile(
-        const std::string& profile_name,
-        TopicAttributes& topic_attributes)
-{
-    return RTPSDomainImpl::get_topic_attributes_from_profile(profile_name, topic_attributes);
-}
-
-bool RTPSDomainImpl::get_topic_attributes_from_profile(
-        const std::string& profile_name,
-        TopicAttributes& topic_attributes)
-{
-    if (xmlparser::XMLP_ret::XML_OK ==
-            xmlparser::XMLProfileManager::fillTopicAttributes(profile_name, topic_attributes))
-    {
-        return true;
-    }
-    return false;
 }
 
 fastdds::dds::xtypes::ITypeObjectRegistry& RTPSDomainImpl::type_object_registry()

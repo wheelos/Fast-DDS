@@ -109,12 +109,12 @@ public:
     /**
      * Add a local writer to the liveliness protocol.
      * @param writer Pointer to the RTPSWriter.
-     * @param wqos Quality of service policies for the writer.
+     * @param qos Quality of service policies for the writer.
      * @return True if correct.
      */
     bool add_local_writer(
             RTPSWriter* writer,
-            const fastdds::dds::WriterQos& wqos);
+            const fastdds::dds::LivelinessQosPolicy& qos);
     /**
      * Remove a local writer from the liveliness protocol.
      * @param writer Pointer to the RTPSWriter.
@@ -125,13 +125,13 @@ public:
 
     /**
      * @brief Adds a local reader to the liveliness protocol
-     * @param reader Pointer to the RTPS reader
-     * @param rqos Quality of service policies for the reader
+     * @param reader  Pointer to the RTPS reader
+     * @param qos     Quality of service policies for the reader
      * @return True if added successfully
      */
     bool add_local_reader(
             RTPSReader* reader,
-            const fastdds::dds::ReaderQos& rqos);
+            const fastdds::dds::LivelinessQosPolicy& qos);
 
     /**
      * @brief Removes a local reader from the livliness protocol
@@ -151,7 +151,7 @@ public:
     bool assert_liveliness(
             GUID_t writer,
             dds::LivelinessQosPolicyKind kind,
-            Duration_t lease_duration);
+            dds::Duration_t lease_duration);
 
     /**
      * @brief A method to assert liveliness of MANUAL_BY_PARTICIPANT writers
@@ -248,7 +248,7 @@ private:
     void pub_liveliness_changed(
             const GUID_t& writer,
             const dds::LivelinessQosPolicyKind& kind,
-            const Duration_t& lease_duration,
+            const dds::Duration_t& lease_duration,
             int32_t alive_change,
             int32_t not_alive_change);
 
@@ -263,7 +263,7 @@ private:
     void sub_liveliness_changed(
             const GUID_t& writer,
             const dds::LivelinessQosPolicyKind& kind,
-            const Duration_t& lease_duration,
+            const dds::Duration_t& lease_duration,
             int32_t alive_change,
             int32_t not_alive_change);
 

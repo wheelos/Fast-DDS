@@ -24,12 +24,12 @@
 
 #include <fastdds/dds/log/Log.hpp>
 #include <fastdds/rtps/builtin/data/BuiltinEndpoints.hpp>
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/history/WriterHistory.hpp>
 #include <fastdds/rtps/writer/WriterListener.hpp>
 
 #include <rtps/builtin/BuiltinProtocols.h>
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/data/WriterProxyData.hpp>
 #include <rtps/builtin/discovery/participant/PDPSimple.h>
 #include <rtps/builtin/liveliness/WLPListener.h>
@@ -108,14 +108,14 @@ WLP::WLP(
     , mp_builtinReaderSecureHistory(nullptr)
 #endif // if HAVE_SECURITY
     , temp_reader_proxy_data_(
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.locators.max_unicast_locators,
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.locators.max_multicast_locators,
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.data_limits,
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.content_filter)
+        p->mp_participantImpl->get_attributes().allocation.locators.max_unicast_locators,
+        p->mp_participantImpl->get_attributes().allocation.locators.max_multicast_locators,
+        p->mp_participantImpl->get_attributes().allocation.data_limits,
+        p->mp_participantImpl->get_attributes().allocation.content_filter)
     , temp_writer_proxy_data_(
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.locators.max_unicast_locators,
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.locators.max_multicast_locators,
-        p->mp_participantImpl->getRTPSParticipantAttributes().allocation.data_limits)
+        p->mp_participantImpl->get_attributes().allocation.locators.max_unicast_locators,
+        p->mp_participantImpl->get_attributes().allocation.locators.max_multicast_locators,
+        p->mp_participantImpl->get_attributes().allocation.data_limits)
 {
     GUID_t tmp_guid = p->mp_participantImpl->getGuid();
     tmp_guid.entityId = 0;
@@ -194,7 +194,7 @@ bool WLP::initWL(
     pub_liveliness_manager_ = new LivelinessManager(
         [&](const GUID_t& guid,
         const dds::LivelinessQosPolicyKind& kind,
-        const Duration_t& lease_duration,
+        const dds::Duration_t& lease_duration,
         int alive_count,
         int not_alive_count) -> void
         {
@@ -211,7 +211,7 @@ bool WLP::initWL(
     sub_liveliness_manager_ = new LivelinessManager(
         [&](const GUID_t& guid,
         const dds::LivelinessQosPolicyKind& kind,
-        const Duration_t& lease_duration,
+        const dds::Duration_t& lease_duration,
         int alive_count,
         int not_alive_count) -> void
         {
@@ -236,7 +236,7 @@ bool WLP::initWL(
 
 bool WLP::createEndpoints()
 {
-    const RTPSParticipantAttributes& pattr = mp_participant->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& pattr = mp_participant->get_attributes();
     const ResourceLimitedContainerConfig& participants_allocation = pattr.allocation.participants;
 
     // Built-in writer history
@@ -335,7 +335,7 @@ bool WLP::createEndpoints()
 
 bool WLP::createSecureEndpoints()
 {
-    const RTPSParticipantAttributes& pattr = mp_participant->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& pattr = mp_participant->get_attributes();
     const ResourceLimitedContainerConfig& participants_allocation = pattr.allocation.participants;
 
     //CREATE WRITER
@@ -485,7 +485,7 @@ bool WLP::assignRemoteEndpoints(
     const NetworkFactory& network = mp_participant->network_factory();
     uint32_t endp = pdata.m_availableBuiltinEndpoints;
     uint32_t auxendp = endp;
-    bool use_multicast_locators = !mp_participant->getAttributes().builtin.avoid_builtin_multicast ||
+    bool use_multicast_locators = !mp_participant->get_attributes().builtin.avoid_builtin_multicast ||
             pdata.metatraffic_locators.unicast.empty();
 
     std::lock_guard<std::mutex> data_guard(temp_data_lock_);
@@ -618,7 +618,7 @@ void WLP::removeRemoteEndpoints(
 
 bool WLP::add_local_writer(
         RTPSWriter* writer,
-        const fastdds::dds::WriterQos& wqos)
+        const fastdds::dds::LivelinessQosPolicy& qos)
 {
     std::lock_guard<std::recursive_mutex> guard(*mp_builtinProtocols->mp_PDP->getMutex());
 
@@ -626,10 +626,9 @@ bool WLP::add_local_writer(
 
     BaseWriter* base_writer = BaseWriter::downcast(writer);
 
-    double wAnnouncementPeriodMilliSec(fastdds::rtps::TimeConv::Duration_t2MilliSecondsDouble(wqos.m_liveliness.
-                    announcement_period));
+    double wAnnouncementPeriodMilliSec(TimeConv::Duration_t2MilliSecondsDouble(qos.announcement_period));
 
-    if (wqos.m_liveliness.kind == dds::AUTOMATIC_LIVELINESS_QOS )
+    if (qos.kind == dds::AUTOMATIC_LIVELINESS_QOS )
     {
         if (automatic_liveliness_assertion_ == nullptr)
         {
@@ -656,7 +655,7 @@ bool WLP::add_local_writer(
         }
         automatic_writers_.push_back(base_writer);
     }
-    else if (wqos.m_liveliness.kind == dds::MANUAL_BY_PARTICIPANT_LIVELINESS_QOS)
+    else if (qos.kind == dds::MANUAL_BY_PARTICIPANT_LIVELINESS_QOS)
     {
         if (manual_liveliness_assertion_ == nullptr)
         {
@@ -685,21 +684,21 @@ bool WLP::add_local_writer(
 
         if (!pub_liveliness_manager_->add_writer(
                     writer->getGuid(),
-                    wqos.m_liveliness.kind,
-                    wqos.m_liveliness.lease_duration))
+                    qos.kind,
+                    qos.lease_duration))
         {
             EPROSIMA_LOG_ERROR(RTPS_LIVELINESS,
                     "Could not add writer " << writer->getGuid() << " to liveliness manager");
         }
     }
-    else if (wqos.m_liveliness.kind == dds::MANUAL_BY_TOPIC_LIVELINESS_QOS)
+    else if (qos.kind == dds::MANUAL_BY_TOPIC_LIVELINESS_QOS)
     {
         manual_by_topic_writers_.push_back(base_writer);
 
         if (!pub_liveliness_manager_->add_writer(
                     writer->getGuid(),
-                    wqos.m_liveliness.kind,
-                    wqos.m_liveliness.lease_duration))
+                    qos.kind,
+                    qos.lease_duration))
         {
             EPROSIMA_LOG_ERROR(RTPS_LIVELINESS,
                     "Could not add writer " << writer->getGuid() << " to liveliness manager");
@@ -832,13 +831,13 @@ bool WLP::remove_local_writer(
 
 bool WLP::add_local_reader(
         RTPSReader* reader,
-        const fastdds::dds::ReaderQos& rqos)
+        const fastdds::dds::LivelinessQosPolicy& qos)
 {
     auto base_reader = BaseReader::downcast(reader);
 
     std::lock_guard<std::recursive_mutex> guard(*mp_builtinProtocols->mp_PDP->getMutex());
 
-    if (rqos.m_liveliness.kind == dds::AUTOMATIC_LIVELINESS_QOS)
+    if (qos.kind == dds::AUTOMATIC_LIVELINESS_QOS)
     {
         automatic_readers_ = true;
     }
@@ -983,7 +982,7 @@ std::shared_ptr<IPayloadPool> WLP::builtin_writer_pool()
 bool WLP::assert_liveliness(
         GUID_t writer,
         dds::LivelinessQosPolicyKind kind,
-        Duration_t lease_duration)
+        dds::Duration_t lease_duration)
 {
     return pub_liveliness_manager_->assert_liveliness(
         writer,
@@ -1005,7 +1004,7 @@ bool WLP::assert_liveliness_manual_by_participant()
 void WLP::pub_liveliness_changed(
         const GUID_t& writer,
         const dds::LivelinessQosPolicyKind& kind,
-        const Duration_t& lease_duration,
+        const dds::Duration_t& lease_duration,
         int32_t alive_change,
         int32_t not_alive_change)
 {
@@ -1056,7 +1055,7 @@ void WLP::pub_liveliness_changed(
 void WLP::sub_liveliness_changed(
         const GUID_t& writer,
         const dds::LivelinessQosPolicyKind& kind,
-        const Duration_t& lease_duration,
+        const dds::Duration_t& lease_duration,
         int32_t alive_change,
         int32_t not_alive_change)
 {

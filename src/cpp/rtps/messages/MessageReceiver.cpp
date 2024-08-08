@@ -50,13 +50,18 @@ namespace rtps {
 MessageReceiver::MessageReceiver(
         RTPSParticipantImpl* participant,
         uint32_t rec_buffer_size)
-    : participant_(participant)
+    : mtx_()
+    , associated_writers_()
+    , associated_readers_()
+#if !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+    , participant_(participant)
+#endif // if !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
     , source_version_(c_ProtocolVersion)
     , source_vendor_id_(c_VendorId_Unknown)
     , source_guid_prefix_(c_GuidPrefix_Unknown)
     , dest_guid_prefix_(c_GuidPrefix_Unknown)
     , have_timestamp_(false)
-    , timestamp_(c_TimeInvalid)
+    , timestamp_(dds::c_TimeInvalid)
 #if HAVE_SECURITY
     , crypto_msg_(participant->is_secure() ? rec_buffer_size : 0)
     , crypto_submsg_(participant->is_secure() ? rec_buffer_size : 0)
@@ -333,7 +338,7 @@ void MessageReceiver::reset()
     source_guid_prefix_ = c_GuidPrefix_Unknown;
     dest_guid_prefix_ = c_GuidPrefix_Unknown;
     have_timestamp_ = false;
-    timestamp_ = c_TimeInvalid;
+    timestamp_ = dds::c_TimeInvalid;
 }
 
 void MessageReceiver::processCDRMsg(

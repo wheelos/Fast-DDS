@@ -75,21 +75,21 @@ uint32_t RTPSParticipant::getRTPSParticipantID() const
     return mp_impl->getRTPSParticipantID();
 }
 
-bool RTPSParticipant::registerWriter(
-        RTPSWriter* Writer,
-        const TopicAttributes& topicAtt,
-        const fastdds::dds::WriterQos& wqos)
+bool RTPSParticipant::register_writer(
+        RTPSWriter* writer,
+        const TopicDescription& topic,
+        const fastdds::dds::WriterQos& qos)
 {
-    return mp_impl->registerWriter(Writer, topicAtt, wqos);
+    return mp_impl->register_writer(writer, topic, qos);
 }
 
-bool RTPSParticipant::registerReader(
-        RTPSReader* Reader,
-        const TopicAttributes& topicAtt,
-        const fastdds::dds::ReaderQos& rqos,
+bool RTPSParticipant::register_reader(
+        RTPSReader* reader,
+        const TopicDescription& topic,
+        const fastdds::dds::ReaderQos& qos,
         const ContentFilterProperty* content_filter)
 {
-    return mp_impl->registerReader(Reader, topicAtt, rqos, content_filter);
+    return mp_impl->register_reader(reader, topic, qos, content_filter);
 }
 
 void RTPSParticipant::update_attributes(
@@ -98,21 +98,19 @@ void RTPSParticipant::update_attributes(
     mp_impl->update_attributes(patt);
 }
 
-bool RTPSParticipant::updateWriter(
-        RTPSWriter* Writer,
-        const TopicAttributes& topicAtt,
+bool RTPSParticipant::update_writer(
+        RTPSWriter* writer,
         const fastdds::dds::WriterQos& wqos)
 {
-    return mp_impl->updateLocalWriter(Writer, topicAtt, wqos);
+    return mp_impl->update_writer(writer, wqos);
 }
 
-bool RTPSParticipant::updateReader(
-        RTPSReader* Reader,
-        const TopicAttributes& topicAtt,
+bool RTPSParticipant::update_reader(
+        RTPSReader* reader,
         const fastdds::dds::ReaderQos& rqos,
         const ContentFilterProperty* content_filter)
 {
-    return mp_impl->updateLocalReader(Reader, topicAtt, rqos, content_filter);
+    return mp_impl->update_reader(reader, rqos, content_filter);
 }
 
 std::vector<std::string> RTPSParticipant::getParticipantNames() const
@@ -120,9 +118,9 @@ std::vector<std::string> RTPSParticipant::getParticipantNames() const
     return mp_impl->getParticipantNames();
 }
 
-const RTPSParticipantAttributes& RTPSParticipant::getRTPSParticipantAttributes() const
+const RTPSParticipantAttributes& RTPSParticipant::get_attributes() const
 {
-    return mp_impl->getRTPSParticipantAttributes();
+    return mp_impl->get_attributes();
 }
 
 uint32_t RTPSParticipant::getMaxMessageSize() const
@@ -261,8 +259,8 @@ bool RTPSParticipant::disable_monitor_service() const
 }
 
 bool RTPSParticipant::fill_discovery_data_from_cdr_message(
-        ParticipantProxyData& data,
-        fastdds::statistics::MonitorServiceStatusData& msg)
+        ParticipantBuiltinTopicData& data,
+        const fastdds::statistics::MonitorServiceStatusData& msg)
 {
     return mp_impl->fill_discovery_data_from_cdr_message(data, msg);
 }

@@ -172,7 +172,7 @@ void StatelessWriter::init(
     get_builtin_guid();
 
     const RemoteLocatorsAllocationAttributes& loc_alloc =
-            participant->getRTPSParticipantAttributes().allocation.locators;
+            participant->get_attributes().allocation.locators;
 
     for (size_t i = 0; i < attributes.matched_readers_allocation.initial; ++i)
     {
@@ -276,7 +276,7 @@ void StatelessWriter::unsent_change_added_to_history(
     std::lock_guard<RecursiveTimedMutex> guard(mp_mutex);
     auto payload_length = change->serializedPayload.length;
 
-    if (liveliness_lease_duration_ < c_TimeInfinite)
+    if (liveliness_lease_duration_ < dds::c_TimeInfinite)
     {
         mp_RTPSParticipant->wlp()->assert_liveliness(
             getGuid(),
@@ -387,7 +387,7 @@ bool StatelessWriter::is_acked_by_all(
 }
 
 bool StatelessWriter::wait_for_all_acked(
-        const Duration_t& max_wait)
+        const dds::Duration_t& max_wait)
 {
     static_cast<void>(max_wait);
     return true;
@@ -493,7 +493,7 @@ bool StatelessWriter::matched_reader_add_edp(
         if (get_matched_readers_size() + matched_readers_pool_.size() < max_readers)
         {
             const RemoteLocatorsAllocationAttributes& loc_alloc =
-                    mp_RTPSParticipant->getRTPSParticipantAttributes().allocation.locators;
+                    mp_RTPSParticipant->get_attributes().allocation.locators;
 
             new_reader.reset(new ReaderLocator(
                         this,

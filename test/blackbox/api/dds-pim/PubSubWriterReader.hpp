@@ -82,25 +82,26 @@ class PubSubWriterReader
 #endif // if HAVE_SECURITY
         void on_participant_discovery(
                 eprosima::fastdds::dds::DomainParticipant* participant,
-                eprosima::fastdds::rtps::ParticipantDiscoveryInfo&& info,
+                eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
+                const eprosima::fastdds::dds::ParticipantBuiltinTopicData& info,
                 bool& should_be_ignored) override
         {
             static_cast<void>(should_be_ignored);
             static_cast<void>(participant);
 
-            switch (info.status)
+            switch (status)
             {
-                case eprosima::fastdds::rtps::ParticipantDiscoveryInfo::DISCOVERED_PARTICIPANT:
-                    info_add(discovered_participants_, info.info.m_guid);
+                case eprosima::fastdds::rtps::ParticipantDiscoveryStatus::DISCOVERED_PARTICIPANT:
+                    info_add(discovered_participants_, info.guid);
                     break;
 
-                case eprosima::fastdds::rtps::ParticipantDiscoveryInfo::REMOVED_PARTICIPANT:
-                    info_remove(discovered_participants_, info.info.m_guid);
+                case eprosima::fastdds::rtps::ParticipantDiscoveryStatus::REMOVED_PARTICIPANT:
+                    info_remove(discovered_participants_, info.guid);
                     break;
 
-                case eprosima::fastdds::rtps::ParticipantDiscoveryInfo::DROPPED_PARTICIPANT:
-                    std::cout << "Participant " << info.info.m_guid << " has been dropped";
-                    info_remove(discovered_participants_, info.info.m_guid);
+                case eprosima::fastdds::rtps::ParticipantDiscoveryStatus::DROPPED_PARTICIPANT:
+                    std::cout << "Participant " << info.guid << " has been dropped";
+                    info_remove(discovered_participants_, info.guid);
                     break;
 
                 default:
@@ -822,28 +823,28 @@ public:
     }
 
     PubSubWriterReader& pub_liveliness_announcement_period(
-            const eprosima::fastdds::Duration_t announcement_period)
+            const eprosima::fastdds::dds::Duration_t announcement_period)
     {
         datawriter_qos_.liveliness().announcement_period = announcement_period;
         return *this;
     }
 
     PubSubWriterReader& sub_liveliness_announcement_period(
-            const eprosima::fastdds::Duration_t announcement_period)
+            const eprosima::fastdds::dds::Duration_t announcement_period)
     {
         datareader_qos_.liveliness().announcement_period = announcement_period;
         return *this;
     }
 
     PubSubWriterReader& pub_liveliness_lease_duration(
-            const eprosima::fastdds::Duration_t lease_duration)
+            const eprosima::fastdds::dds::Duration_t lease_duration)
     {
         datawriter_qos_.liveliness().lease_duration = lease_duration;
         return *this;
     }
 
     PubSubWriterReader& sub_liveliness_lease_duration(
-            const eprosima::fastdds::Duration_t lease_duration)
+            const eprosima::fastdds::dds::Duration_t lease_duration)
     {
         datareader_qos_.liveliness().lease_duration = lease_duration;
         return *this;

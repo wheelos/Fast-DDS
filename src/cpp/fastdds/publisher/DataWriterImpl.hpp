@@ -21,6 +21,7 @@
 
 #include <memory>
 
+#include <fastdds/dds/builtin/topic/PublicationBuiltinTopicData.hpp>
 #include <fastdds/dds/core/ReturnCode.hpp>
 #include <fastdds/dds/core/status/BaseStatus.hpp>
 #include <fastdds/dds/core/status/DeadlineMissedStatus.hpp>
@@ -33,8 +34,8 @@
 #include <fastdds/rtps/attributes/WriterAttributes.hpp>
 #include <fastdds/rtps/common/Guid.hpp>
 #include <fastdds/rtps/common/LocatorList.hpp>
-#include <fastdds/rtps/common/WriteParams.hpp>
 #include <fastdds/rtps/common/SerializedPayload.hpp>
+#include <fastdds/rtps/common/WriteParams.hpp>
 #include <fastdds/rtps/history/IChangePool.hpp>
 #include <fastdds/rtps/history/IPayloadPool.hpp>
 #include <fastdds/rtps/interfaces/IReaderDataFilter.hpp>
@@ -207,7 +208,7 @@ public:
     ReturnCode_t write_w_timestamp(
             const void* const data,
             const InstanceHandle_t& handle,
-            const fastdds::Time_t& timestamp);
+            const fastdds::dds::Time_t& timestamp);
 
     /**
      * @brief Implementation of the DDS `register_instance` operation.
@@ -235,7 +236,7 @@ public:
      */
     InstanceHandle_t register_instance_w_timestamp(
             const void* const instance,
-            const fastdds::Time_t& timestamp);
+            const fastdds::dds::Time_t& timestamp);
 
     /**
      * @brief Implementation of the DDS `unregister_instance` and `dispose` operations.
@@ -276,7 +277,7 @@ public:
     ReturnCode_t unregister_instance_w_timestamp(
             const void* const instance,
             const InstanceHandle_t& handle,
-            const fastdds::Time_t& timestamp,
+            const fastdds::dds::Time_t& timestamp,
             bool dispose = false);
 
     /**
@@ -297,12 +298,12 @@ public:
     }
 
     ReturnCode_t wait_for_acknowledgments(
-            const fastdds::Duration_t& max_wait);
+            const fastdds::dds::Duration_t& max_wait);
 
     ReturnCode_t wait_for_acknowledgments(
             const void* const instance,
             const InstanceHandle_t& handle,
-            const fastdds::Duration_t& max_wait);
+            const fastdds::dds::Duration_t& max_wait);
 
     ReturnCode_t get_publication_matched_status(
             PublicationMatchedStatus& status);
@@ -379,6 +380,17 @@ public:
      */
     void filter_is_being_removed(
             const char* filter_class_name);
+
+    /**
+     * Retrieve the publication data discovery information.
+     *
+     * @param [out] publication_data The publication data discovery information.
+     *
+     * @return NOT_ENABLED if the writer has not been enabled.
+     * @return OK if the publication data is returned.
+     */
+    ReturnCode_t get_publication_builtin_topic_data(
+            PublicationBuiltinTopicData& publication_data) const;
 
 protected:
 
@@ -584,11 +596,6 @@ protected:
             const void* const data,
             fastdds::rtps::WriteParams& wparams,
             const InstanceHandle_t& handle);
-
-    static fastdds::TopicAttributes get_topic_attributes(
-            const DataWriterQos& qos,
-            const Topic& topic,
-            const TypeSupport& type);
 
     static void set_qos(
             DataWriterQos& to,

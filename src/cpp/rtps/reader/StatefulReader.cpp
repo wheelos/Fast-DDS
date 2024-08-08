@@ -191,7 +191,7 @@ void StatefulReader::init(
         RTPSParticipantImpl* pimpl,
         const ReaderAttributes& att)
 {
-    const RTPSParticipantAttributes& part_att = pimpl->getRTPSParticipantAttributes();
+    const RTPSParticipantAttributes& part_att = pimpl->get_attributes();
     for (size_t n = 0; n < att.matched_writers_allocation.initial; ++n)
     {
         matched_writers_pool_.push_back(new WriterProxy(this, part_att.allocation.locators, proxy_changes_config_));
@@ -267,7 +267,7 @@ bool StatefulReader::matched_writer_add_edp(
             size_t max_readers = matched_writers_pool_.max_size();
             if (getMatchedWritersSize() + matched_writers_pool_.size() < max_readers)
             {
-                const RTPSParticipantAttributes& part_att = mp_RTPSParticipant->getRTPSParticipantAttributes();
+                const RTPSParticipantAttributes& part_att = mp_RTPSParticipant->get_attributes();
                 wp = new WriterProxy(this, part_att.allocation.locators, proxy_changes_config_);
             }
             else
@@ -347,7 +347,7 @@ bool StatefulReader::matched_writer_add_edp(
             EPROSIMA_LOG_INFO(RTPS_READER, "Writer Proxy " << wp->guid() << " added to " << m_guid.entityId);
         }
     }
-    if (liveliness_lease_duration_ < c_TimeInfinite)
+    if (liveliness_lease_duration_ < dds::c_TimeInfinite)
     {
         auto wlp = this->mp_RTPSParticipant->wlp();
         if ( wlp != nullptr)
@@ -454,7 +454,7 @@ bool StatefulReader::matched_writer_remove(
     }
 
     bool ret_val = (wproxy != nullptr);
-    if (ret_val && liveliness_lease_duration_ < c_TimeInfinite)
+    if (ret_val && liveliness_lease_duration_ < dds::c_TimeInfinite)
     {
         auto wlp = this->mp_RTPSParticipant->wlp();
         if ( wlp != nullptr)
@@ -552,7 +552,7 @@ bool StatefulReader::findWriterProxy(
 void StatefulReader::assert_writer_liveliness(
         const GUID_t& writer)
 {
-    if (liveliness_lease_duration_ < c_TimeInfinite)
+    if (liveliness_lease_duration_ < dds::c_TimeInfinite)
     {
         auto wlp = this->mp_RTPSParticipant->wlp();
         if (wlp != nullptr)
@@ -889,7 +889,7 @@ bool StatefulReader::process_heartbeat_msg(
             // Try to assert liveliness if requested by proxy's logic
             if (assert_liveliness)
             {
-                if (liveliness_lease_duration_ < c_TimeInfinite)
+                if (liveliness_lease_duration_ < dds::c_TimeInfinite)
                 {
                     if (liveliness_kind_ == dds::MANUAL_BY_TOPIC_LIVELINESS_QOS ||
                             writer->liveliness_kind() == dds::MANUAL_BY_TOPIC_LIVELINESS_QOS)

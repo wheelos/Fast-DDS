@@ -17,16 +17,15 @@
  *
  */
 
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
-
-#include <rtps/participant/RTPSParticipantImpl.h>
+#include <rtps/builtin/discovery/participant/timedevent/DSClientEvent.h>
 
 #include <fastdds/dds/log/Log.hpp>
 
 #include <rtps/builtin/BuiltinProtocols.h>
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/discovery/endpoint/EDPClient.h>
 #include <rtps/builtin/discovery/participant/PDPClient.h>
-#include <rtps/builtin/discovery/participant/timedevent/DSClientEvent.h>
+#include <rtps/participant/RTPSParticipantImpl.h>
 #include <rtps/resources/ResourceEvent.h>
 #include <utils/shared_mutex.hpp>
 
@@ -44,7 +43,7 @@ DSClientEvent::DSClientEvent(
                 return event();
             }, interval)
     , mp_PDP(p_PDP)
-    , mp_EDP(static_cast<EDPClient*>(mp_PDP->getEDP()))
+    , mp_EDP(static_cast<EDPClient*>(mp_PDP->get_edp()))
 {
 }
 

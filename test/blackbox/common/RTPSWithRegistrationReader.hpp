@@ -34,7 +34,8 @@
 #include <fastdds/rtps/attributes/HistoryAttributes.hpp>
 #include <fastdds/rtps/attributes/ReaderAttributes.hpp>
 #include <fastdds/rtps/attributes/RTPSParticipantAttributes.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
+#include <fastdds/rtps/builtin/data/SubscriptionBuiltinTopicData.hpp>
+#include <fastdds/rtps/builtin/data/TopicDescription.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/participant/RTPSParticipant.hpp>
 #include <fastdds/rtps/reader/ReaderListener.hpp>
@@ -140,11 +141,11 @@ public:
         , receiving_(false)
         , matched_(0)
     {
-        topic_attr_.topicDataType = type_.get_name();
+        sub_builtin_data_.type_name = type_.get_name();
         // Generate topic name
         std::ostringstream t;
         t << topic_name << "_" << asio::ip::host_name() << "_" << GET_PID();
-        topic_attr_.topicName = t.str();
+        sub_builtin_data_.topic_name = t.str();
 
         // By default, heartbeat period delay is 100 milliseconds.
         reader_attr_.times.heartbeat_response_delay.seconds = 0;
@@ -153,6 +154,15 @@ public:
         participant_attr_.builtin.discovery_config.discoveryProtocol =
                 eprosima::fastdds::rtps::DiscoveryProtocol::SIMPLE;
         participant_attr_.builtin.use_WriterLivelinessProtocol = true;
+
+        if (type_.is_compute_key_provided)
+        {
+            reader_attr_.endpoint.topicKind = eprosima::fastdds::rtps::WITH_KEY;
+        }
+        else
+        {
+            reader_attr_.endpoint.topicKind = eprosima::fastdds::rtps::NO_KEY;
+        }
     }
 
     virtual ~RTPSWithRegistrationReader()
@@ -179,8 +189,18 @@ public:
         // Create reader
         if (has_payload_pool_)
         {
-            reader_ = eprosima::fastdds::rtps::RTPSDomain::createRTPSReader(participant_, reader_attr_, payload_pool_,
-                            history_, &listener_);
+            if (custom_entity_id_ != eprosima::fastdds::rtps::c_EntityId_Unknown)
+            {
+                reader_ = eprosima::fastdds::rtps::RTPSDomain::createRTPSReader(participant_, custom_entity_id_,
+                                reader_attr_, payload_pool_,
+                                history_, &listener_);
+            }
+            else
+            {
+                reader_ = eprosima::fastdds::rtps::RTPSDomain::createRTPSReader(participant_, reader_attr_,
+                                payload_pool_,
+                                history_, &listener_);
+            }
         }
         else
         {
@@ -193,7 +213,11 @@ public:
             return;
         }
 
-        initialized_ = participant_->registerReader(reader_, topic_attr_, reader_qos_, content_filter_property_);
+        eprosima::fastdds::rtps::TopicDescription topic_desc;
+        topic_desc.topic_name = sub_builtin_data_.topic_name;
+        topic_desc.type_name = sub_builtin_data_.type_name;
+
+        initialized_ = participant_->register_reader(reader_, topic_desc, reader_qos_, content_filter_property_);
     }
 
     void update()
@@ -203,7 +227,7 @@ public:
             return;
         }
 
-        initialized_ = participant_->updateReader(reader_, topic_attr_, reader_qos_, content_filter_property_);
+        initialized_ = participant_->update_reader(reader_, reader_qos_, content_filter_property_);
     }
 
     bool isInitialized() const
@@ -427,10 +451,18 @@ public:
         return *this;
     }
 
+    RTPSWithRegistrationReader& set_entity_id(
+            const eprosima::fastdds::rtps::EntityId_t& entity_id)
+    {
+        custom_entity_id_ = entity_id;
+        return *this;
+    }
+
     RTPSWithRegistrationReader& history_depth(
             const int32_t depth)
     {
-        topic_attr_.historyQos.depth = depth;
+        hattr_.maximumReservedCaches = depth;
+        hattr_.initialReservedCaches = std::min(hattr_.initialReservedCaches, depth);
         return *this;
     }
 
@@ -447,6 +479,7 @@ public:
         {
             reader_qos_.m_reliability.kind = eprosima::fastdds::dds::BEST_EFFORT_RELIABILITY_QOS;
         }
+        sub_builtin_data_.reliability = reader_qos_.m_reliability;
 
         return *this;
     }
@@ -456,6 +489,7 @@ public:
     {
         reader_attr_.endpoint.durabilityKind = kind;
         reader_qos_.m_durability.durabilityKind(kind);
+        sub_builtin_data_.durability = reader_qos_.m_durability;
 
         return *this;
     }
@@ -517,6 +551,7 @@ public:
             const std::vector<eprosima::fastdds::rtps::octet>& user_data)
     {
         reader_qos_.m_userData = user_data;
+        sub_builtin_data_.user_data = reader_qos_.m_userData;
         return *this;
     }
 
@@ -531,6 +566,7 @@ public:
             std::vector<std::string>& partitions)
     {
         reader_qos_.m_partition.setNames(partitions);
+        sub_builtin_data_.partition = reader_qos_.m_partition;
         return *this;
     }
 
@@ -576,10 +612,6 @@ private:
             eprosima::fastcdr::FastBuffer buffer((char*)change->serializedPayload.data,
                     change->serializedPayload.length);
             eprosima::fastcdr::Cdr cdr(buffer
-#if FASTCDR_VERSION_MAJOR == 1
-                    , eprosima::fastcdr::Cdr::DEFAULT_ENDIAN
-                    , eprosima::fastcdr::Cdr::CdrType::DDS_CDR
-#endif // FASTCDR_VERSION_MAJOR == 1
                     );
 
             cdr.read_encapsulation();
@@ -631,7 +663,7 @@ private:
     bool destroy_participant_{false};
     eprosima::fastdds::rtps::RTPSReader* reader_;
     eprosima::fastdds::rtps::ReaderAttributes reader_attr_;
-    eprosima::fastdds::TopicAttributes topic_attr_;
+    eprosima::fastdds::rtps::SubscriptionBuiltinTopicData sub_builtin_data_;
     eprosima::fastdds::dds::ReaderQos reader_qos_;
     eprosima::fastdds::rtps::ReaderHistory* history_;
     eprosima::fastdds::rtps::HistoryAttributes hattr_;
@@ -643,6 +675,7 @@ private:
     std::condition_variable cvDiscovery_;
     std::atomic<bool> receiving_;
     std::atomic<uint32_t> matched_;
+    eprosima::fastdds::rtps::EntityId_t custom_entity_id_ = eprosima::fastdds::rtps::c_EntityId_Unknown;
     eprosima::fastdds::rtps::SequenceNumber_t last_seq_;
     std::atomic<size_t> current_received_count_;
     std::atomic<size_t> number_samples_expected_;

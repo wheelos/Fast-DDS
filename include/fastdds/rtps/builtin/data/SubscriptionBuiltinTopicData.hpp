@@ -36,16 +36,19 @@ namespace rtps {
 struct SubscriptionBuiltinTopicData
 {
     /// Builtin topic Key
-    BuiltinTopicKey_t key;
+    BuiltinTopicKey_t key{{0, 0, 0}};
 
     /// Builtin participant topic Key
-    BuiltinTopicKey_t participant_key;
+    BuiltinTopicKey_t participant_key{{0, 0, 0}};
 
     /// Topic name
     fastcdr::string_255 topic_name;
 
     /// Type name
     fastcdr::string_255 type_name;
+
+    /// Topic kind
+    TopicKind_t topic_kind = TopicKind_t::NO_KEY;
 
     // DataReader Qos
 
@@ -125,7 +128,7 @@ struct SubscriptionBuiltinTopicData
     RemoteLocatorList remote_locators;
 
     /// Network configuration
-    NetworkConfigSet_t loopback_transformation;
+    NetworkConfigSet_t loopback_transformation{};
 
     /// Expects Inline Qos
     bool expects_inline_qos = false;

@@ -36,6 +36,7 @@
 #include <fastdds/dds/topic/Topic.hpp>
 #include <fastdds/dds/topic/TypeSupport.hpp>
 #include <fastdds/domain/DomainParticipantImpl.hpp>
+#include <fastdds/rtps/builtin/data/TopicDescription.hpp>
 #include <fastdds/rtps/participant/RTPSParticipant.hpp>
 #include <fastdds/rtps/reader/RTPSReader.hpp>
 #include <fastdds/rtps/RTPSDomain.hpp>
@@ -46,19 +47,21 @@
 #include <fastdds/subscriber/SubscriberImpl.hpp>
 #include <fastdds/topic/ContentFilteredTopicImpl.hpp>
 
+#include <fastdds/utils/TypePropagation.hpp>
 #include <rtps/history/TopicPayloadPoolRegistry.hpp>
 #include <rtps/participant/RTPSParticipantImpl.h>
 #include <rtps/resources/TimedEvent.h>
 #include <rtps/resources/ResourceEvent.h>
 #include <rtps/RTPSDomainImpl.hpp>
 #include <utils/TimeConversion.hpp>
+#include <utils/BuiltinTopicKeyConversions.hpp>
 #ifdef FASTDDS_STATISTICS
 #include <statistics/fastdds/domain/DomainParticipantImpl.hpp>
 #include <statistics/types/monitorservice_types.hpp>
 #endif //FASTDDS_STATISTICS
 
 using eprosima::fastdds::RecursiveTimedMutex;
-using eprosima::fastdds::c_TimeInfinite;
+using eprosima::fastdds::dds::c_TimeInfinite;
 
 using namespace eprosima::fastdds::rtps;
 using namespace std::chrono;
@@ -213,13 +216,13 @@ ReturnCode_t DataReaderImpl::enable()
         att.endpoint.properties.properties().push_back(std::move(property));
     }
 
-    bool is_datasharing_compatible = false;
-    ReturnCode_t ret_code = check_datasharing_compatible(att, is_datasharing_compatible);
+    is_data_sharing_compatible_ = false;
+    ReturnCode_t ret_code = check_datasharing_compatible(att, is_data_sharing_compatible_);
     if (ret_code != RETCODE_OK)
     {
         return ret_code;
     }
-    if (is_datasharing_compatible)
+    if (is_data_sharing_compatible_)
     {
         DataSharingQosPolicy datasharing(qos_.data_sharing());
         if (datasharing.domain_ids().empty())
@@ -274,8 +277,13 @@ ReturnCode_t DataReaderImpl::enable()
                     qos_.lifespan().duration.to_ns() * 1e-6);
 
     // Register the reader
+    fastdds::rtps::TopicDescription topic_desc;
+    topic_desc.topic_name = topic_->get_impl()->get_rtps_topic_name();
+    topic_desc.type_name = topic_->get_type_name();
+    subscriber_->get_participant_impl()->fill_type_information(type_, topic_desc.type_information);
+
     ReaderQos rqos = qos_.get_readerqos(subscriber_->get_qos());
-    if (!is_datasharing_compatible)
+    if (!is_data_sharing_compatible_)
     {
         rqos.data_sharing.off();
     }
@@ -296,7 +304,11 @@ ReturnCode_t DataReaderImpl::enable()
     {
         filter_property = &content_topic->filter_property;
     }
-    if (!subscriber_->rtps_participant()->registerReader(reader_, topic_attributes(), rqos, filter_property))
+    if (!subscriber_->rtps_participant()->register_reader(
+                reader_,
+                topic_desc,
+                rqos,
+                filter_property))
     {
         EPROSIMA_LOG_ERROR(DATA_READER, "Could not register reader on discovery protocols");
 
@@ -379,7 +391,7 @@ bool DataReaderImpl::can_be_deleted(
 }
 
 bool DataReaderImpl::wait_for_unread_message(
-        const Duration_t& timeout)
+        const dds::Duration_t& timeout)
 {
     return reader_ ? reader_->wait_for_unread_cache(timeout) : false;
 }
@@ -833,7 +845,7 @@ void DataReaderImpl::update_rtps_reader_qos()
             filter_property = &content_topic->filter_property;
         }
         ReaderQos rqos = qos_.get_readerqos(get_subscriber()->get_qos());
-        subscriber_->rtps_participant()->updateReader(reader_, topic_attributes(), rqos, filter_property);
+        subscriber_->rtps_participant()->update_reader(reader_, rqos, filter_property);
         // TODO(eduponz): RTPSReader attributes must be updated here
     }
 }
@@ -875,7 +887,7 @@ ReturnCode_t DataReaderImpl::set_qos(
         update_rtps_reader_qos();
 
         // Deadline
-        if (qos_.deadline().period != c_TimeInfinite)
+        if (qos_.deadline().period != dds::c_TimeInfinite)
         {
             deadline_duration_us_ = duration<double, std::ratio<1, 1000000>>(qos_.deadline().period.to_ns() * 1e-3);
             deadline_timer_->update_interval_millisec(qos_.deadline().period.to_ns() * 1e-6);
@@ -886,7 +898,7 @@ ReturnCode_t DataReaderImpl::set_qos(
         }
 
         // Lifespan
-        if (qos_.lifespan().duration != c_TimeInfinite)
+        if (qos_.lifespan().duration != dds::c_TimeInfinite)
         {
             lifespan_duration_us_ =
                     std::chrono::duration<double, std::ratio<1, 1000000>>(qos_.lifespan().duration.to_ns() * 1e-3);
@@ -1099,7 +1111,7 @@ bool DataReaderImpl::on_new_cache_change_added(
         return false;
     }
 
-    if (qos_.deadline().period != c_TimeInfinite)
+    if (qos_.deadline().period != dds::c_TimeInfinite)
     {
         if (!history_.set_next_deadline(
                     change->instanceHandle,
@@ -1117,7 +1129,7 @@ bool DataReaderImpl::on_new_cache_change_added(
         }
     }
 
-    if (qos_.lifespan().duration == c_TimeInfinite)
+    if (qos_.lifespan().duration == dds::c_TimeInfinite)
     {
         return true;
     }
@@ -1200,7 +1212,7 @@ ReturnCode_t DataReaderImpl::get_subscription_matched_status(
 
 bool DataReaderImpl::deadline_timer_reschedule()
 {
-    assert(qos_.deadline().period != c_TimeInfinite);
+    assert(qos_.deadline().period != dds::c_TimeInfinite);
 
     std::unique_lock<RecursiveTimedMutex> lock(reader_->getMutex());
 
@@ -1218,7 +1230,7 @@ bool DataReaderImpl::deadline_timer_reschedule()
 
 bool DataReaderImpl::deadline_missed()
 {
-    assert(qos_.deadline().period != c_TimeInfinite);
+    assert(qos_.deadline().period != dds::c_TimeInfinite);
 
     std::unique_lock<RecursiveTimedMutex> lock(reader_->getMutex());
 
@@ -1422,7 +1434,7 @@ const Subscriber* DataReaderImpl::get_subscriber() const
 
 /* TODO
    bool DataReaderImpl::wait_for_historical_data(
-        const Duration_t& max_wait) const
+        const dds::Duration_t& max_wait) const
    {
     (void)max_wait;
     // TODO Implement
@@ -1768,27 +1780,6 @@ void DataReaderImpl::set_qos(
     {
         to.data_sharing() = from.data_sharing();
     }
-}
-
-fastdds::TopicAttributes DataReaderImpl::topic_attributes() const
-{
-    fastdds::TopicAttributes topic_att;
-    topic_att.topicKind = type_->is_compute_key_provided ? WITH_KEY : NO_KEY;
-    topic_att.topicName = topic_->get_impl()->get_rtps_topic_name();
-    topic_att.topicDataType = topic_->get_type_name();
-    topic_att.historyQos = qos_.history();
-    topic_att.resourceLimitsQos = qos_.resource_limits();
-    if (type_->auto_fill_type_information() && xtypes::TK_NONE != type_->type_identifiers().type_identifier1()._d())
-    {
-        if (RETCODE_OK ==
-                fastdds::rtps::RTPSDomainImpl::get_instance()->type_object_registry_observer().get_type_information(
-                    type_->type_identifiers(), topic_att.type_information.type_information))
-        {
-            topic_att.type_information.assigned(true);
-        }
-    }
-
-    return topic_att;
 }
 
 DataReaderListener* DataReaderImpl::get_listener_for(
@@ -2198,6 +2189,90 @@ void DataReaderImpl::try_notify_read_conditions() noexcept
             impl->notify();
         }
     }
+}
+
+ReturnCode_t DataReaderImpl::get_subscription_builtin_topic_data(
+        SubscriptionBuiltinTopicData& subscription_data) const
+{
+    if (nullptr == reader_)
+    {
+        return RETCODE_NOT_ENABLED;
+    }
+
+    // sanity checks
+    assert(nullptr != subscriber_);
+    assert(nullptr != topic_);
+    assert(nullptr != subscriber_->get_participant());
+
+    subscription_data = SubscriptionBuiltinTopicData{};
+
+    from_proxy_to_builtin(guid_.entityId, subscription_data.key.value);
+    from_proxy_to_builtin(subscriber_->get_participant()->guid().guidPrefix,
+            subscription_data.participant_key.value);
+
+    subscription_data.topic_name = topic_->get_impl()->get_rtps_topic_name();
+    subscription_data.type_name = topic_->get_type_name();
+    subscription_data.topic_kind = type_->is_compute_key_provided ? WITH_KEY : NO_KEY;
+
+    // DataReader qos
+    subscription_data.durability = qos_.durability();
+    subscription_data.deadline = qos_.deadline();
+    subscription_data.latency_budget = qos_.latency_budget();
+    subscription_data.lifespan = qos_.lifespan();
+    subscription_data.liveliness = qos_.liveliness();
+    subscription_data.reliability = qos_.reliability();
+    subscription_data.ownership = qos_.ownership();
+    subscription_data.destination_order = qos_.destination_order();
+    subscription_data.user_data = qos_.user_data();
+    subscription_data.time_based_filter = qos_.time_based_filter();
+
+    // Subscriber qos
+    subscription_data.presentation = subscriber_->qos_.presentation();
+    subscription_data.partition = subscriber_->qos_.partition();
+    subscription_data.group_data = subscriber_->qos_.group_data();
+
+    // X-Types 1.3
+    if (subscriber_->get_participant_impl()->fill_type_information(type_, subscription_data.type_information))
+    {
+        subscription_data.type_consistency = qos_.type_consistency();
+    }
+    subscription_data.representation = qos_.representation();
+
+    // eProsima Extensions
+
+    subscription_data.disable_positive_acks = qos_.reliable_reader_qos().disable_positive_acks;
+    subscription_data.data_sharing = qos_.data_sharing();
+
+    if (subscription_data.data_sharing.kind() != OFF &&
+            subscription_data.data_sharing.domain_ids().empty())
+    {
+        subscription_data.data_sharing.add_domain_id(utils::default_domain_id());
+    }
+
+    subscription_data.guid = guid();
+    subscription_data.participant_guid = subscriber_->get_participant()->guid();
+    qos_.endpoint().unicast_locator_list.copy_to(subscription_data.remote_locators.unicast);
+    qos_.endpoint().multicast_locator_list.copy_to(subscription_data.remote_locators.multicast);
+    subscription_data.expects_inline_qos = qos_.expects_inline_qos();
+
+    if (!is_data_sharing_compatible_)
+    {
+        subscription_data.data_sharing.off();
+    }
+    const std::string* endpoint_partitions = PropertyPolicyHelper::find_property(qos_.properties(), "partitions");
+    if (endpoint_partitions)
+    {
+        std::istringstream partition_string(*endpoint_partitions);
+        std::string partition_name;
+        subscription_data.partition.clear();
+
+        while (std::getline(partition_string, partition_name, ';'))
+        {
+            subscription_data.partition.push_back(partition_name.c_str());
+        }
+    }
+
+    return RETCODE_OK;
 }
 
 }  // namespace dds

@@ -27,13 +27,15 @@
 
 // Include first possible mocks (depending on include on CMakeLists.txt)
 #include <fastdds/rtps/attributes/RTPSParticipantAttributes.hpp>
+#include <fastdds/rtps/builtin/data/ParticipantBuiltinTopicData.hpp>
 #include <fastdds/rtps/common/LocatorList.hpp>
 #include <fastdds/rtps/history/IChangePool.hpp>
 #include <fastdds/rtps/participant/RTPSParticipantListener.hpp>
 #include <fastdds/rtps/reader/RTPSReader.hpp>
 #include <fastdds/rtps/writer/RTPSWriter.hpp>
 
-#include <rtps/network/NetworkFactory.h>
+#include <fastdds/utils/TypePropagation.hpp>
+#include <rtps/network/NetworkFactory.hpp>
 #include <rtps/reader/BaseReader.hpp>
 #include <rtps/resources/ResourceEvent.h>
 #if HAVE_SECURITY
@@ -70,15 +72,18 @@ class MockParticipantListener : public RTPSParticipantListener
 {
 public:
 
-    void onParticipantDiscovery(
+    void on_participant_discovery(
             RTPSParticipant* participant,
-            ParticipantDiscoveryInfo&& info,
+            ParticipantDiscoveryStatus status,
+            const ParticipantBuiltinTopicData& info,
             bool& should_be_ignored) override
     {
-        onParticipantDiscovery_mock(participant, info, should_be_ignored);
+        on_participant_discovery_mock(participant, status, info, should_be_ignored);
     }
 
-    MOCK_METHOD3(onParticipantDiscovery_mock, void (RTPSParticipant*, const ParticipantDiscoveryInfo&, bool&));
+    MOCK_METHOD4(on_participant_discovery_mock,
+            void (RTPSParticipant*, ParticipantDiscoveryStatus, const ParticipantBuiltinTopicData&,
+            bool&));
 
 #if HAVE_SECURITY
     void onParticipantAuthentication(
@@ -164,8 +169,6 @@ public:
             ReaderListener* listen,
             const EntityId_t& entityId, bool isBuiltin, bool enable));
     // *INDENT-ON*
-
-    MOCK_CONST_METHOD0(getParticipantMutex, std::recursive_mutex* ());
 
     bool createWriter(
             RTPSWriter** writer,
@@ -305,12 +308,7 @@ public:
         return 65536;
     }
 
-    const RTPSParticipantAttributes& getRTPSParticipantAttributes() const
-    {
-        return attr_;
-    }
-
-    RTPSParticipantAttributes& getAttributes()
+    const RTPSParticipantAttributes& get_attributes() const
     {
         return attr_;
     }
@@ -411,6 +409,8 @@ public:
     {
         return nullptr;
     }
+
+    MOCK_METHOD(dds::utils::TypePropagation, type_propagation, (), (const));
 
 private:
 

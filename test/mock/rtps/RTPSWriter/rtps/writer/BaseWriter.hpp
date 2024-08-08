@@ -76,10 +76,13 @@ public:
         return static_cast<BaseWriter*>(endpoint);
     }
 
+    RTPSParticipantImpl* get_participant_impl()
+    {
+        return nullptr;
+    }
+
     // *INDENT-OFF* Uncrustify makes a mess with MOCK_METHOD macros
     MOCK_METHOD0(get_max_allowed_payload_size, uint32_t());
-
-    MOCK_METHOD0(get_participant_impl, RTPSParticipantImpl* ());
 
     MOCK_METHOD4(deliver_sample_nts, DeliveryRetCode(
             CacheChange_t*,
@@ -95,7 +98,7 @@ public:
 
     MOCK_CONST_METHOD0(get_liveliness_kind, const fastdds::dds::LivelinessQosPolicyKind& ());
 
-    MOCK_CONST_METHOD0(get_liveliness_lease_duration, const Duration_t& ());
+    MOCK_CONST_METHOD0(get_liveliness_lease_duration, const dds::Duration_t& ());
 
     MOCK_CONST_METHOD0(is_datasharing_compatible, bool());
 

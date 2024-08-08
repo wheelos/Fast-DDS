@@ -16,21 +16,23 @@
  * @file PublisherAttributes.hpp
  */
 
-#ifndef _FASTDDS_PUBLISHERATTRIBUTES_H_
-#define _FASTDDS_PUBLISHERATTRIBUTES_H_
+#ifndef FASTDDS_XMLPARSER_ATTRIBUTES__PUBLISHERATTRIBUTES_HPP
+#define FASTDDS_XMLPARSER_ATTRIBUTES__PUBLISHERATTRIBUTES_HPP
 
 
 #include <fastdds/dds/publisher/qos/WriterQos.hpp>
 #include <fastdds/rtps/attributes/ExternalLocators.hpp>
 #include <fastdds/rtps/attributes/PropertyPolicy.hpp>
 #include <fastdds/rtps/attributes/ResourceManagement.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
 #include <fastdds/rtps/attributes/WriterAttributes.hpp>
 #include <fastdds/rtps/common/Locator.hpp>
 #include <fastdds/rtps/common/Time_t.hpp>
 
+#include <xmlparser/attributes/TopicAttributes.hpp>
+
 namespace eprosima {
 namespace fastdds {
+namespace xmlparser {
 
 /**
  * Class PublisherAttributes, used by the user to define the attributes of a Publisher.
@@ -60,7 +62,7 @@ public:
     }
 
     //! Topic Attributes for the Publisher
-    fastdds::TopicAttributes topic;
+    fastdds::xmlparser::TopicAttributes topic;
 
     //! QOS for the Publisher
     dds::WriterQos qos;
@@ -139,7 +141,8 @@ private:
     int16_t m_entityID = -1;
 };
 
+} // namespace xmlparser
 } // namespace fastdds
 } // namespace eprosima
 
-#endif /* _FASTDDS_PUBLISHERATTRIBUTES_H_ */
+#endif // FASTDDS_XMLPARSER_ATTRIBUTES__PUBLISHERATTRIBUTES_HPP

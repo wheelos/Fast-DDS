@@ -13,23 +13,25 @@
 // limitations under the License.
 
 /**
- * @file <xmlparser/attributes/SubscriberAttributes.hpp>
+ * @file SubscriberAttributes.hpp
  */
 
-#ifndef _FASTDDS_SUBSCRIBERATTRIBUTES_H_
-#define _FASTDDS_SUBSCRIBERATTRIBUTES_H_
+#ifndef FASTDDS_XMLPARSER_ATTRIBUTES__SUBSCRIBERATTRIBUTES_HPP
+#define FASTDDS_XMLPARSER_ATTRIBUTES__SUBSCRIBERATTRIBUTES_HPP
 
 #include <fastdds/dds/subscriber/qos/ReaderQos.hpp>
 #include <fastdds/rtps/attributes/ExternalLocators.hpp>
 #include <fastdds/rtps/attributes/PropertyPolicy.hpp>
 #include <fastdds/rtps/attributes/ReaderAttributes.hpp>
 #include <fastdds/rtps/attributes/ResourceManagement.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
 #include <fastdds/rtps/common/Locator.hpp>
 #include <fastdds/rtps/common/Time_t.hpp>
 
+#include <xmlparser/attributes/TopicAttributes.hpp>
+
 namespace eprosima {
 namespace fastdds {
+namespace xmlparser {
 
 /**
  * Class SubscriberAttributes, used by the user to define the attributes of a Subscriber.
@@ -40,7 +42,7 @@ class SubscriberAttributes
 public:
 
     //! Topic Attributes
-    fastdds::TopicAttributes topic;
+    fastdds::xmlparser::TopicAttributes topic;
 
     //! Reader QOs.
     dds::ReaderQos qos;
@@ -146,7 +148,8 @@ private:
     int16_t m_entityID = -1;
 };
 
-} /* namespace fastdds */
-} /* namespace eprosima */
+} // namespace xmlparser
+} // namespace fastdds
+} // namespace eprosima
 
-#endif /* SUBSCRIBERPARAMS_H_ */
+#endif // FASTDDS_XMLPARSER_ATTRIBUTES__SUBSCRIBERATTRIBUTES_HPP

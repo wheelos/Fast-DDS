@@ -36,7 +36,6 @@
 #include <fastdds/dds/topic/Topic.hpp>
 #include <fastdds/dds/topic/TypeSupport.hpp>
 #include <fastdds/publisher/PublisherImpl.hpp>
-#include <fastdds/rtps/attributes/TopicAttributes.hpp>
 #include <fastdds/rtps/common/Guid.hpp>
 #include <fastdds/rtps/common/InstanceHandle.hpp>
 #include <fastdds/rtps/common/Types.hpp>
@@ -87,7 +86,7 @@ protected:
         participant_->impl_ = this;
 
         guid_.guidPrefix.value[11] = 1;
-        eprosima::fastdds::TopicAttributes top_attr;
+        eprosima::fastdds::xmlparser::TopicAttributes top_attr;
         eprosima::fastdds::xmlparser::XMLProfileManager::getDefaultTopicAttributes(top_attr);
         default_topic_qos_.history() = top_attr.historyQos;
         default_topic_qos_.resource_limits() = top_attr.resourceLimitsQos;
@@ -304,7 +303,7 @@ public:
 
     Topic* find_topic(
             const std::string& /*topic_name*/,
-            const fastdds::Duration_t& /*timeout*/)
+            const fastdds::dds::Duration_t& /*timeout*/)
     {
         return nullptr;
     }
@@ -538,7 +537,7 @@ public:
     }
 
     ReturnCode_t get_current_time(
-            fastdds::Time_t& /*current_time*/) const
+            fastdds::dds::Time_t& /*current_time*/) const
     {
         return RETCODE_OK;
     }
@@ -711,6 +710,13 @@ public:
     std::atomic<uint32_t>& id_counter()
     {
         return id_counter_;
+    }
+
+    bool fill_type_information(
+            const TypeSupport& /*type*/,
+            xtypes::TypeInformationParameter& /*type_information*/)
+    {
+        return false;
     }
 
 protected:

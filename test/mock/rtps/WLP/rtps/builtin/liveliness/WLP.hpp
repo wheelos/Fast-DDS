@@ -28,6 +28,8 @@
 #include <fastdds/dds/core/policy/QosPolicies.hpp>
 #include <fastdds/rtps/common/Guid.hpp>
 
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
+
 namespace eprosima {
 namespace fastdds {
 namespace rtps {
@@ -63,7 +65,7 @@ public:
     MOCK_METHOD3(assert_liveliness, bool(
                 GUID_t writer,
                 dds::LivelinessQosPolicyKind kind,
-                Duration_t lease_duration));
+                dds::Duration_t lease_duration));
 };
 
 } /* namespace rtps */

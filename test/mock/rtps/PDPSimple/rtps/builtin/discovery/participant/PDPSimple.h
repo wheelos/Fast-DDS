@@ -21,9 +21,8 @@
 
 #include <gmock/gmock.h>
 
-#include <fastdds/rtps/builtin/data/ParticipantProxyData.hpp>
-
 #include <rtps/builtin/BuiltinProtocols.h>
+#include <rtps/builtin/data/ParticipantProxyData.hpp>
 #include <rtps/builtin/discovery/endpoint/EDP.h>
 #include <rtps/messages/CDRMessage.hpp>
 
@@ -39,7 +38,7 @@ public:
 
     MOCK_METHOD1(get_participant_proxy_data_serialized, CDRMessage_t(Endianness_t));
 
-    EDP* getEDP()
+    EDP* get_edp()
     {
         return &edp_;
     }

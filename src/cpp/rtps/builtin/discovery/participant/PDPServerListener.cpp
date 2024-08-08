@@ -22,10 +22,12 @@
 #include <memory>
 
 #include <fastdds/dds/log/Log.hpp>
+#include <fastdds/rtps/builtin/data/ParticipantBuiltinTopicData.hpp>
 #include <fastdds/rtps/history/ReaderHistory.hpp>
 #include <fastdds/rtps/participant/RTPSParticipantListener.hpp>
 #include <fastdds/rtps/reader/RTPSReader.hpp>
 
+#include <rtps/builtin/data/ProxyDataConverters.hpp>
 #include <rtps/builtin/discovery/database/DiscoveryParticipantChangeData.hpp>
 #include <rtps/builtin/discovery/endpoint/EDP.h>
 #include <rtps/builtin/discovery/participant/DS/DiscoveryServerPDPEndpoints.hpp>
@@ -137,7 +139,6 @@ void PDPServerListener::on_new_cache_change_added(
                     &msg,
                     true,
                     pdp_server()->getRTPSParticipant()->network_factory(),
-                    pdp_server()->getRTPSParticipant()->has_shm_transport(),
                     true,
                     change_in->vendor_id))
         {
@@ -155,7 +156,7 @@ void PDPServerListener::on_new_cache_change_added(
             EPROSIMA_LOG_INFO(RTPS_PDP_LISTENER, "Participant type " << participant_type_str);
             bool is_client = ret.second;
 
-            const auto& pattr = pdp_server()->getRTPSParticipant()->getAttributes();
+            const auto& pattr = pdp_server()->getRTPSParticipant()->get_attributes();
             fastdds::rtps::network::external_locators::filter_remote_locators(participant_data,
                     pattr.builtin.metatraffic_external_unicast_locators, pattr.default_external_unicast_locators,
                     pattr.ignore_non_matching_locators);
@@ -239,11 +240,11 @@ void PDPServerListener::on_new_cache_change_added(
             }
 
             // Store whether the participant is new or updated
-            auto status = (pdata == nullptr) ? ParticipantDiscoveryInfo::DISCOVERED_PARTICIPANT :
-                    ParticipantDiscoveryInfo::CHANGED_QOS_PARTICIPANT;
+            auto status = (pdata == nullptr) ? ParticipantDiscoveryStatus::DISCOVERED_PARTICIPANT :
+                    ParticipantDiscoveryStatus::CHANGED_QOS_PARTICIPANT;
 
             // New participant case
-            if (status == ParticipantDiscoveryInfo::DISCOVERED_PARTICIPANT)
+            if (status == ParticipantDiscoveryStatus::DISCOVERED_PARTICIPANT)
             {
                 // TODO: pending avoid builtin connections on client info relayed by other server
 
@@ -296,12 +297,12 @@ void PDPServerListener::on_new_cache_change_added(
                     bool should_be_ignored = false;
                     {
                         std::lock_guard<std::mutex> cb_lock(pdp_server()->callback_mtx_);
-                        ParticipantDiscoveryInfo info(*pdata);
-                        info.status = status;
+                        ParticipantBuiltinTopicData info;
+                        from_proxy_to_builtin(*pdata, info);
 
-                        listener->onParticipantDiscovery(
+                        listener->on_participant_discovery(
                             pdp_server()->getRTPSParticipant()->getUserRTPSParticipant(),
-                            std::move(info), should_be_ignored);
+                            status, std::move(info), should_be_ignored);
                     }
                     if (should_be_ignored)
                     {
@@ -339,7 +340,7 @@ void PDPServerListener::on_new_cache_change_added(
 
         // Remove participant from proxies
         reader->getMutex().unlock();
-        pdp_server()->remove_remote_participant(guid, ParticipantDiscoveryInfo::REMOVED_PARTICIPANT);
+        pdp_server()->remove_remote_participant(guid, ParticipantDiscoveryStatus::REMOVED_PARTICIPANT);
         reader->getMutex().lock();
     }
 
